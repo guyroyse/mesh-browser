@@ -1,0 +1,6 @@
+{
+  "typescript.suggest.convertToEs6Modules": false,
+  "javascript.suggest.convertToEs6Modules": false,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
+}

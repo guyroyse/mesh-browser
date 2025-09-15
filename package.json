@@ -1,0 +1,14 @@
+{
+  "name": "mesh-browser",
+  "version": "1.0.0",
+  "description": "Universal browser for decentralized protocols - starting with Reticulum mesh networking",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron src/main.js"
+  },
+  "author": "Guy Royse <guy@guy.dev> (http://guy.dev/)",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^38.1.0"
+  }
+}
