@@ -11,7 +11,7 @@ class PythonManager {
 
   async start() {
     return new Promise((resolve, reject) => {
-      const pythonScript = path.join(__dirname, 'python', 'mesh_backend.py');
+      const pythonScript = path.join(__dirname, 'python', 'main.py');
 
       // Spawn Python process
       this.pythonProcess = spawn('python', [pythonScript], {

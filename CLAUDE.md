@@ -80,29 +80,43 @@ protocol.registerHttpProtocol('reticulum', (request, callback) => {
 });
 ```
 
-### Python Backend
+### Python Backend Architecture
 ```python
-# Local proxy server
-class ReticBrowserBackend:
-    def __init__(self):
-        # Initialize Reticulum client
-        # Start discovery process
-        # Setup protocol handlers
-        
-    def fetch_page(self, reticulum_url):
-        # Parse reticulum://destination/path
-        # Establish Link to destination
-        # Send HTTP-like request
-        # Return response to Electron
+# Clean separation of concerns with modular design
+
+# Main entry point
+main.py -> ConsoleServer(CommandRouter)
+
+# IPC Communication Layer
+class ConsoleServer:
+    def run():                    # Main stdin/stdout JSON loop
+    def _process_next_line():     # Read and validate input
+    def _process_message():       # Parse JSON messages
+    def _handle_message():        # Route commands, handle shutdown
+    def _send_message():          # Send JSON responses
+    def _log_info/debug/error():  # stderr logging
+
+# Command Routing Layer
+class CommandRouter:
+    def register_commands():      # Register handler classes
+    def handle_command():         # Route to appropriate handlers
+
+# Handler Classes (Extensible)
+class SystemHandler:             # ping, version commands
+class ReticulariumHandler:       # fetch-page, network commands (TODO)
+class IPFSHandler:               # Future IPFS support
 ```
 
 ## Development Phases
 
 ### Phase 1: Reticulum Browser
-- Electron app with embedded Chromium
-- Python backend with Reticulum support
-- Basic reticulum:// URL handling
-- Server discovery and connection
+- ✅ Electron app with embedded Chromium
+- ✅ Clean Python backend architecture (ConsoleServer + CommandRouter)
+- ✅ JSON IPC communication over stdin/stdout/stderr
+- ✅ Extensible handler pattern for commands
+- 🔄 Reticulum HTTP client integration (next: add ReticulariumHandler)
+- 🔄 Basic reticulum:// URL handling
+- 🔄 Server discovery and connection
 
 ### Phase 2: Enhanced UX  
 - Network topology visualization
