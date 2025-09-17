@@ -106,11 +106,21 @@ class ConsoleServer:
         print(json_str, flush=True)
 
     def _send_startup_message(self):
-        """Send startup notification to stderr"""
+        """Send startup notification to stdout as JSON for PythonManager"""
+        startup_message = {
+            'type': 'startup',
+            'message': 'Python backend initialized and ready'
+        }
+        self._send_message(startup_message)
         self._log_info("Python backend initialized and ready")
 
     def _send_shutdown_message(self):
-        """Send shutdown notification to stderr"""
+        """Send shutdown notification to stdout as JSON for PythonManager"""
+        shutdown_message = {
+            'type': 'shutdown',
+            'message': 'Python backend terminated'
+        }
+        self._send_message(shutdown_message)
         self._log_info("Python backend terminated")
 
     def _send_error_message(self, error: str):

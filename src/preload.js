@@ -4,5 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron')
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('meshBrowserAPI', {
   // Test function to verify IPC works
-  getTestMessage: () => ipcRenderer.invoke('get-test-message')
+  getTestMessage: () => ipcRenderer.invoke('get-test-message'),
+
+  // Reticulum content fetching
+  fetchPage: (url) => ipcRenderer.invoke('fetch-page', url)
 })
