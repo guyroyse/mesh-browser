@@ -10,5 +10,8 @@
   "type": "commonjs",
   "devDependencies": {
     "electron": "^38.1.0"
+  },
+  "dependencies": {
+    "ulid": "^3.0.1"
   }
 }

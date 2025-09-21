@@ -2,7 +2,7 @@ const path = require('path')
 
 const { app, BrowserWindow } = require('electron')
 const { setupIpcHandlers } = require('./ipc-handlers')
-const { pythonManager } = require('./python-manager')
+const { reticulumManager } = require('./process-managers')
 
 let mainWindow = null
 
@@ -23,7 +23,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   // Start Python backend
   try {
-    await pythonManager.start()
+    await reticulumManager.start()
     console.log('Python backend started successfully')
   } catch (error) {
     console.error('Failed to start Python backend:', error)
@@ -45,7 +45,7 @@ app.on('window-all-closed', function () {
 app.on('before-quit', async () => {
   // Shutdown Python backend
   try {
-    await pythonManager.stop()
+    await reticulumManager.stop()
   } catch (error) {
     console.error('Error stopping Python backend:', error)
   }

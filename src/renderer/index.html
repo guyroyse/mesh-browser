@@ -8,28 +8,15 @@
   </head>
   <body>
     <div class="container">
-      <h1>MeshBrowser - IPC Stack Test</h1>
-      <p>Testing secure IPC communication between renderer and main process</p>
+      <h1>MeshBrowser - System Handler Test</h1>
+      <p>Testing Node.js-Python bridge with system commands</p>
 
-      <button id="testBtn">Test IPC Communication</button>
-
-      <div id="result">Initializing...</div>
-
-      <hr>
-
-      <h2>Reticulum Content Fetcher</h2>
-      <p>Enter a destination hash and path to fetch content from the Reticulum network</p>
-
-      <div class="fetch-form">
-        <label for="destHash">Destination Hash + Path:</label>
-        <input type="text" id="destHash" placeholder="abc123def456.../path/to/file.html" style="width: 400px;">
-        <button id="fetchBtn">Fetch Content</button>
+      <div class="button-group">
+        <button id="pingBtn">Test Ping</button>
+        <button id="versionBtn">Get Version</button>
       </div>
 
-      <div id="fetchResult">Ready to fetch content...</div>
-
-      <h3>Content Preview:</h3>
-      <textarea id="contentBox" rows="15" cols="80" readonly placeholder="Fetched content will appear here..."></textarea>
+      <div id="result">Initializing...</div>
     </div>
 
     <script src="app.js"></script>
