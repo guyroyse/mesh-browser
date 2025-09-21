@@ -1,67 +1,60 @@
 const { spawn } = require('child_process')
-const { ProcessUtils } = require('./utils')
+const { parseDataToMessages } = require('./utils')
 
-class ProcessStarter {
-  constructor(command, args, options = {}) {
-    this.command = command
-    this.args = args
-    this.options = { stdio: ['pipe', 'pipe', 'pipe'], ...options }
-  }
+async function startProcess(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const process = spawnProcess(command, args, options)
 
-  #spawnProcess() {
-    return spawn(this.command, this.args, this.options)
-  }
+    const timeout = setTimeout(() => {
+      cleanup(timeout, process)
+      reject(new Error('Process startup timeout'))
+    }, 5000)
 
-  #cleanupStartupListeners(timeout, errorHandler, dataHandler, process) {
-    clearTimeout(timeout)
-    process.removeListener('error', errorHandler)
-    process.stdout.removeListener('data', dataHandler)
-  }
-
-  #processStartupMessage(message, onStartupComplete, resolve, cleanup) {
-    if (message.type === 'startup') {
-      console.log('Process system message:', message)
-      cleanup()
-      onStartupComplete()
-      resolve()
-      return true
+    const cleanupAndReject = error => {
+      cleanup(timeout, process)
+      reject(error)
     }
-    return false
-  }
 
-  async start(onStartupComplete) {
-    return new Promise((resolve, reject) => {
-      const process = this.#spawnProcess()
+    const cleanupAndResolve = () => {
+      cleanup(timeout, process)
+      resolve(process)
+    }
 
-      const startupTimeout = setTimeout(() => {
-        this.#cleanupStartupListeners(startupTimeout, onStartupError, onStartupData, process)
-        reject(new Error('Process startup timeout'))
-      }, 5000)
+    process.on('error', cleanupAndReject)
 
-      const onStartupError = error => {
-        this.#cleanupStartupListeners(startupTimeout, onStartupError, onStartupData, process)
-        reject(error)
+    process.stdout.on('data', data => {
+      try {
+        processStartupMessage(data)
+        cleanupAndResolve()
+      } catch (error) {
+        cleanupAndReject(error)
       }
-
-      const cleanup = () => {
-        this.#cleanupStartupListeners(startupTimeout, onStartupError, onStartupData, process)
-      }
-
-      const onStartupData = data => {
-        const messages = ProcessUtils.parseDataToMessages(data)
-
-        for (const message of messages) {
-          if (this.#processStartupMessage(message, onStartupComplete, () => resolve(process), cleanup)) {
-            return
-          }
-        }
-      }
-
-      // Listen for startup messages and errors
-      process.on('error', onStartupError)
-      process.stdout.on('data', onStartupData)
     })
+  })
+}
+
+function spawnProcess(command, args, options) {
+  const processOptions = { stdio: ['pipe', 'pipe', 'pipe'], ...options }
+  return spawn(command, args, processOptions)
+}
+
+function processStartupMessage(data) {
+  const messages = parseDataToMessages(data)
+  if (messages.length === 0) throw new Error('No startup message received')
+  if (messages.length > 1) throw new Error('Multiple messages received on startup but expected one')
+
+  const message = messages[0]
+  if (message.type !== 'startup') throw new Error(`Expected startup message, got: ${message.type}`)
+
+  console.log('Process system message:', message)
+}
+
+function cleanup(timeout, process) {
+  if (timeout) clearTimeout(timeout)
+  if (process) {
+    process.removeAllListeners('error')
+    process.stdout.removeAllListeners('data')
   }
 }
 
-module.exports = { ProcessStarter }
+module.exports = { startProcess }

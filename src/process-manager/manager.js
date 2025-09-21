@@ -1,35 +1,36 @@
-const { ProcessStarter } = require('./starter')
+const { startProcess } = require('./starter')
 const { MessageHandler } = require('./message-handler')
-const { ProcessStopper } = require('./stopper')
+const { stopProcess } = require('./stopper')
 
 class ProcessManager {
+  #command
+  #args
+  #options
+  #handler
   #process = null
-  #isReady = false
 
   constructor(command, args, options = {}) {
-    this.starter = new ProcessStarter(command, args, options)
-    this.handler = new MessageHandler()
-    this.stopper = new ProcessStopper()
+    this.#command = command
+    this.#args = args
+    this.#options = options
+    this.#handler = new MessageHandler()
   }
 
   async start() {
-    this.#process = await this.starter.start(() => {
-      // Setup message handling after startup is confirmed
-      this.handler.attachTo(this.#process)
-      this.#isReady = true
-    })
+    const process = await startProcess(this.#command, this.#args, this.#options)
+    this.#handler.attachTo(process)
+    this.#process = process
   }
 
   async sendCommand(command, data = {}) {
-    if (!this.#isReady) throw new Error('Process not ready')
-    return this.handler.sendCommand(command, data)
+    if (!this.#process) throw new Error('Process not ready')
+    return await this.#handler.sendCommand(command, data)
   }
 
   async stop() {
-    if (!this.#isReady) return
-
-    await this.stopper.stop(this.#process, this.handler)
-    this.#isReady = false
+    if (!this.#process) return
+    this.#handler.detachFrom()
+    await stopProcess(this.#process)
     this.#process = null
   }
 }
