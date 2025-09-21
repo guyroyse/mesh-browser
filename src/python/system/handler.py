@@ -18,16 +18,7 @@ class SystemHandler:
     def get_commands(self) -> Dict[str, callable]:
         """Return dictionary of command names to handler methods"""
         return {
-            'ping': self.ping,
             'version': self.version
-        }
-
-    def ping(self, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle ping command"""
-        request_id = message.get('id')
-        return {
-            'id': request_id,
-            'data': {'pong': True}
         }
 
     def version(self, message: Dict[str, Any]) -> Dict[str, Any]:

@@ -23,14 +23,15 @@ MeshBrowser is part of the **MeshWeb** project - a universal browser for decentr
 ```
 MeshBrowser Desktop App
 ├── Electron Frontend (UI)
-│   ├── Custom browser chrome
-│   ├── Address bar with reticulum:// support
-│   ├── Embedded Chromium widget (renders HTML)
+│   ├── Custom browser chrome (address bar, navigation)
+│   ├── Native reticulum:// protocol handler
+│   ├── Isolated webview for page rendering
+│   ├── about: URLs for system diagnostics
 │   └── Network status/discovery panels
 └── Python Backend (Networking)
-    ├── Reticulum client
-    ├── Protocol handlers
-    └── Local proxy server
+    ├── Reticulum client (PageFetcher, StatusFetcher)
+    ├── Protocol handlers (ReticulumHandler, SystemHandler)
+    └── IPC communication layer (ConsoleServer)
 ```
 
 ### Why This Approach
@@ -70,17 +71,29 @@ MeshBrowser Desktop App
 
 ### Protocol Handler Architecture
 ```javascript
-// Electron main process
+// Electron main process - register reticulum:// as privileged scheme
 protocol.registerSchemesAsPrivileged([{
   scheme: 'reticulum',
-  privileges: { supportFetchAPI: true }
+  privileges: {
+    supportFetchAPI: true,
+    corsEnabled: true,
+    standard: true,
+    secure: true,
+    allowServiceWorkers: true
+  }
 }]);
 
-// Intercept reticulum:// URLs
-protocol.registerHttpProtocol('reticulum', (request, callback) => {
-  // Send to Python backend via IPC
-  // Python handles Reticulum networking
-  // Return response to Chromium
+// Stream protocol handler - intercepts reticulum:// URLs
+protocol.registerStreamProtocol('reticulum', async (request, callback) => {
+  const url = request.url.substring(12) // Remove 'reticulum://'
+  const response = await reticulumManager.sendCommand('fetch-page', { url })
+  const content = Buffer.from(response.content, 'base64')
+
+  callback({
+    statusCode: response.status_code || 200,
+    headers: { 'Content-Type': response.content_type || 'text/html' },
+    data: stream
+  })
 });
 ```
 
@@ -129,8 +142,11 @@ src/python/
 - ✅ **Binary content support via base64 encoding**
 - ✅ **Smart timeout handling (trusts RNS built-ins)**
 - ✅ **Working IPC communication between Electron and Python backend**
-- ✅ **Basic UI for testing Reticulum content fetching**
-- 🔄 Debug and fix Reticulum content fetching functionality
+- ✅ **Native reticulum:// protocol handler in Electron**
+- ✅ **Browser-like UI with webview for isolated page rendering**
+- ✅ **Full JavaScript execution and resource loading in webview**
+- ✅ **Automatic embedded link and resource handling**
+- ✅ **about: URL support for system diagnostics**
 - 🔄 Server discovery and connection UI
 
 ### Phase 2: Enhanced UX  
@@ -232,11 +248,11 @@ The application automatically starts a Python backend process when launched. The
 ### Key File Structure
 ```
 src/
-├── main.js                    # Electron main process entry point
+├── main.js                    # Electron main process + reticulum:// protocol handler
 ├── renderer/                  # Frontend UI (HTML/CSS/JS)
-│   ├── index.html            # Test UI for system commands
-│   └── app.js                # Frontend JavaScript
-├── preload.js                # Electron security bridge
+│   ├── index.html            # Browser interface with webview
+│   └── app.js                # Navigation, URL routing, webview management
+├── preload.js                # Electron security bridge (meshBrowserAPI)
 ├── ipc-handlers.js           # Electron IPC message routing
 ├── process-managers.js       # Python process lifecycle management
 ├── process-manager/          # Process management utilities
@@ -244,45 +260,56 @@ src/
     ├── main.py               # Python entry point
     ├── console_server.py     # IPC communication layer
     ├── command_router.py     # Command routing to handlers
-    ├── system/handler.py     # System commands (ping, version)
+    ├── system/handler.py     # System commands (version)
     └── reticulum/            # Reticulum protocol implementation
-        ├── handler.py        # Reticulum command handlers
+        ├── handler.py        # Reticulum command handlers (fetch-page, status)
         ├── client.py         # Reticulum networking coordinator
-        ├── page_fetcher.py   # Content retrieval
+        ├── page_fetcher.py   # Content retrieval (URLParser, ResponseParser)
         └── status_fetcher.py # Network status
 ```
 
-### IPC Communication Pattern
-Electron ↔ Python communication uses JSON messages over stdin/stdout:
+### Browser Integration Pattern
+Native protocol handler + webview provides seamless browsing:
 
 ```javascript
-// Electron sends command
-const response = await reticulumManager.sendCommand('fetch-page', { url: 'abc123.../file.html' })
+// User navigates to reticulum:// URL
+browserView.src = 'reticulum://abc123def456.../index.html'
+
+// Protocol handler automatically:
+// 1. Intercepts the request
+// 2. Calls Python backend via reticulumManager.sendCommand('fetch-page')
+// 3. Streams response back to webview
+// 4. Webview renders like a regular website
+
+// All embedded resources work automatically:
+// <img src="logo.png"> → reticulum://abc123def456.../logo.png
+// <link href="style.css"> → reticulum://abc123def456.../style.css
 ```
 
-```python
-# Python handler responds
-{
-  "id": "request-123",
-  "success": true,
-  "data": {
-    "content": "base64-encoded-content",
-    "content_type": "text/html",
-    "status_code": 200,
-    "encoding": "base64"
-  }
-}
+### IPC Communication (Internal)
+For about: pages and system functions:
+
+```javascript
+// API available to renderer
+window.meshBrowserAPI.reticulumStatus()  // System diagnostics
+window.meshBrowserAPI.fetchPage(url)     // Manual fetching
 ```
 
-**Recent Progress (Latest Session):**
+**Recent Major Progress (Latest Sessions):**
 - ✅ **Fixed Python backend startup timeout issue**
-- ✅ **Implemented working IPC communication** - ping command works
-- ✅ **Added UI for Reticulum content fetching** - input field, fetch button, content display
-- ✅ **Wired up fetch-page IPC handlers** - Electron → Python → ReticulumHandler
-- 🔄 **Debugging fetch-page functionality** - basic UI in place, needs troubleshooting
+- ✅ **Implemented working IPC communication** - all commands work
+- ✅ **Fixed PageFetcher to match working meshcurl.py pattern** - added "web" aspect, proper timeouts
+- ✅ **Implemented native reticulum:// protocol handler** - Electron treats it as first-class protocol
+- ✅ **Built browser-like UI** - address bar, navigation buttons, status bar, webview
+- ✅ **Added webview isolation** - pages run in separate context from app UI
+- ✅ **about: URL support** - about:system and about:reticulum for diagnostics
+- ✅ **Full resource loading** - images, CSS, JavaScript all work automatically
+- ✅ **Automatic link navigation** - embedded links work within webview
 
-**Next Steps:**
-- Debug and fix the fetch-page command flow
-- Test with actual Reticulum network content
-- Implement Electron frontend protocol handler for reticulum:// URLs
-- Add reticulum:// URL interception and parsing
+**Current State:**
+MeshBrowser now works as a **true mesh web browser**! Users can:
+- Enter `reticulum://hash/path` URLs and browse like regular websites
+- See images, styled pages, and interactive JavaScript content
+- Navigate between pages using embedded links
+- Use `about:system` and `about:reticulum` for diagnostics
+- Experience full web browsing over Reticulum mesh networks

@@ -3,30 +3,31 @@ const { reticulumManager } = require('./process-managers')
 
 // Initialize all IPC handlers
 function setupIpcHandlers() {
-  // System ping command
-  ipcMain.handle('system-ping', async () => {
-    try {
-      const response = await reticulumManager.sendCommand('ping')
-      return response
-    } catch (error) {
-      throw new Error(`Ping failed: ${error.message}`)
-    }
-  })
-
   // System version command
   ipcMain.handle('system-version', async () => {
     try {
-      const response = await reticulumManager.sendCommand('version')
-      return response
+      return await reticulumManager.sendCommand('version')
     } catch (error) {
       throw new Error(`Version request failed: ${error.message}`)
     }
   })
 
-  // Future mesh networking handlers will go here:
-  // ipcMain.handle('discover-servers', async () => {
-  //   return reticulumManager.sendCommand('discover-servers')
-  // })
+  // Reticulum network handlers
+  ipcMain.handle('reticulum-status', async () => {
+    try {
+      return await reticulumManager.sendCommand('reticulum-status')
+    } catch (error) {
+      throw new Error(`Reticulum status request failed: ${error.message}`)
+    }
+  })
+
+  ipcMain.handle('reticulum-fetch-page', async (event, { url }) => {
+    try {
+      return await reticulumManager.sendCommand('fetch-page', { url })
+    } catch (error) {
+      throw new Error(`Reticulum fetch-page failed: ${error.message}`)
+    }
+  })
 }
 
 module.exports = { setupIpcHandlers }
