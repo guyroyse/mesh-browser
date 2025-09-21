@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # MeshBrowser - Universal Decentralized Browser
 
 ## Project Context
@@ -202,6 +206,73 @@ MeshBrowser makes decentralized networking accessible to regular users. Instead 
 - **Smart timeouts** - Only path discovery (10s), trusts RNS for the rest
 - **Clean exceptions** - ValueError, ConnectionError, TimeoutError, RuntimeError
 - **Modular design** - PageFetcher and StatusFetcher handle specialized logic
+
+## Development Commands
+
+### Running the Application
+```bash
+npm start                    # Start Electron app with Python backend
+```
+
+### Prerequisites
+- Node.js v24.7.0+ and npm 11.5.1+
+- Python 3.13.7+
+- No additional Python dependencies file exists (installs RNS at runtime)
+
+### Development Workflow
+The application automatically starts a Python backend process when launched. The Python backend handles Reticulum networking while Electron provides the UI.
+
+## Code Architecture
+
+### Hybrid Electron + Python Architecture
+- **Electron Frontend** (`src/main.js`, `src/renderer/`) - UI and browser interface
+- **Python Backend** (`src/python/`) - Reticulum networking and protocol handling
+- **IPC Communication** - JSON over stdin/stdout between Electron and Python
+
+### Key File Structure
+```
+src/
+├── main.js                    # Electron main process entry point
+├── renderer/                  # Frontend UI (HTML/CSS/JS)
+│   ├── index.html            # Test UI for system commands
+│   └── app.js                # Frontend JavaScript
+├── preload.js                # Electron security bridge
+├── ipc-handlers.js           # Electron IPC message routing
+├── process-managers.js       # Python process lifecycle management
+├── process-manager/          # Process management utilities
+└── python/                   # Python backend
+    ├── main.py               # Python entry point
+    ├── console_server.py     # IPC communication layer
+    ├── command_router.py     # Command routing to handlers
+    ├── system/handler.py     # System commands (ping, version)
+    └── reticulum/            # Reticulum protocol implementation
+        ├── handler.py        # Reticulum command handlers
+        ├── client.py         # Reticulum networking coordinator
+        ├── page_fetcher.py   # Content retrieval
+        └── status_fetcher.py # Network status
+```
+
+### IPC Communication Pattern
+Electron ↔ Python communication uses JSON messages over stdin/stdout:
+
+```javascript
+// Electron sends command
+const response = await reticulumManager.sendCommand('fetch-page', { url: 'abc123.../file.html' })
+```
+
+```python
+# Python handler responds
+{
+  "id": "request-123",
+  "success": true,
+  "data": {
+    "content": "base64-encoded-content",
+    "content_type": "text/html",
+    "status_code": 200,
+    "encoding": "base64"
+  }
+}
+```
 
 **Recent Progress (Latest Session):**
 - ✅ **Fixed Python backend startup timeout issue**

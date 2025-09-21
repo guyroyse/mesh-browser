@@ -10,12 +10,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     resultDiv.innerHTML = '<p style="color: blue;">🏓 Testing ping...</p>'
 
     try {
-      const response = await window.meshBrowserAPI.ping()
+      const data = await window.meshBrowserAPI.ping()
 
       resultDiv.innerHTML = `
         <h3>Ping Test Results:</h3>
-        <p><strong>Success:</strong> ${response.success ? '✅ Yes' : '❌ No'}</p>
-        <p><strong>Pong:</strong> ${response.data?.pong ? '✅ Received' : '❌ Not received'}</p>
+        <p><strong>Pong:</strong> ${data.pong ? '✅ Received' : '❌ Not received'}</p>
         <p style="color: green;"><strong>✅ Python Backend:</strong> Ping successful!</p>
       `
     } catch (error) {
@@ -28,14 +27,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     resultDiv.innerHTML = '<p style="color: blue;">📋 Getting version info...</p>'
 
     try {
-      const response = await window.meshBrowserAPI.version()
+      const data = await window.meshBrowserAPI.version()
 
       resultDiv.innerHTML = `
         <h3>Version Test Results:</h3>
-        <p><strong>Success:</strong> ${response.success ? '✅ Yes' : '❌ No'}</p>
-        <p><strong>Python Version:</strong> ${response.data?.python_version || 'Not available'}</p>
-        <p><strong>Working Directory:</strong> ${response.data?.working_directory || 'Not available'}</p>
-        <p><strong>Timestamp:</strong> ${response.data?.timestamp || 'Not available'}</p>
+        <p><strong>Python Version:</strong> ${data.python_version || 'Not available'}</p>
+        <p><strong>Working Directory:</strong> ${data.working_directory || 'Not available'}</p>
+        <p><strong>Timestamp:</strong> ${data.timestamp || 'Not available'}</p>
         <p style="color: green;"><strong>✅ Python Backend:</strong> Version info retrieved!</p>
       `
     } catch (error) {

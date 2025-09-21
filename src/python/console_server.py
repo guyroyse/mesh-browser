@@ -56,7 +56,6 @@ class ConsoleServer:
 
         except json.JSONDecodeError as e:
             self._send_message({
-                'success': False,
                 'error': f'Invalid JSON: {str(e)}'
             })
 
@@ -88,7 +87,6 @@ class ConsoleServer:
         """Create a standardized success response"""
         return {
             'id': request_id,
-            'success': True,
             'data': data
         }
         
@@ -96,14 +94,14 @@ class ConsoleServer:
         """Create a standardized error response"""
         return {
             'id': request_id,
-            'success': False,
             'error': error_message
         }
 
     def _send_message(self, message: Dict[str, Any]):
-        """Send structured JSON message to Electron frontend via stdout"""
+        """Send structured JSON message to Electron frontend via stdout with frame prefix"""
         json_str = json.dumps(message)
-        print(json_str, flush=True)
+        framed_message = f"MESHBROWSER_MSG: {json_str}"
+        print(framed_message, flush=True)
 
     def _send_startup_message(self):
         """Send startup notification to stdout as JSON for PythonManager"""

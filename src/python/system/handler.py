@@ -27,7 +27,6 @@ class SystemHandler:
         request_id = message.get('id')
         return {
             'id': request_id,
-            'success': True,
             'data': {'pong': True}
         }
 
@@ -36,7 +35,6 @@ class SystemHandler:
         request_id = message.get('id')
         return {
             'id': request_id,
-            'success': True,
             'data': {
                 'python_version': sys.version,
                 'working_directory': os.getcwd(),

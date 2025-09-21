@@ -47,7 +47,7 @@ class MessageHandler {
   }
 
   #onStdOut(data) {
-    console.log('Process stdout:', data.toString())
+    console.log('Process stdout (handler):', data.toString().trim())
 
     const messages = parseDataToMessages(data)
     for (const message of messages) this.#processMessage(message)
@@ -67,11 +67,13 @@ class MessageHandler {
   }
 
   #processMessage(message) {
+    console.log('Processing message:', message)
     const requestId = message.id
-    if (message.success) {
-      this.#pendingRequests.resolve(requestId, message.data)
+
+    if (message.error) {
+      this.#pendingRequests.reject(requestId, new Error(message.error))
     } else {
-      this.#pendingRequests.reject(requestId, new Error(message.error ?? 'Unknown process error'))
+      this.#pendingRequests.resolve(requestId, message.data)
     }
   }
 }

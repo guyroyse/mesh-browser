@@ -34,7 +34,6 @@ class ReticulumHandler:
 
             return {
                 'id': request_id,
-                'success': True,
                 'data': {
                     'content': result['content'],
                     'content_type': result['content_type'],
@@ -57,7 +56,6 @@ class ReticulumHandler:
 
         return {
             'id': request_id,
-            'success': True,
             'data': status
         }
 
@@ -66,6 +64,5 @@ class ReticulumHandler:
         """Create a standardized error response"""
         return {
             'id': request_id,
-            'success': False,
             'error': error_message
         }

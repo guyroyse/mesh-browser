@@ -24,8 +24,7 @@ async function startProcess(command, args, options = {}) {
 
     process.stdout.on('data', data => {
       try {
-        processStartupMessage(data)
-        cleanupAndResolve()
+        if (processStartupMessage(data)) cleanupAndResolve()
       } catch (error) {
         cleanupAndReject(error)
       }
@@ -39,14 +38,17 @@ function spawnProcess(command, args, options) {
 }
 
 function processStartupMessage(data) {
+  console.log('Process stdout (startup):', data.toString())
   const messages = parseDataToMessages(data)
-  if (messages.length === 0) throw new Error('No startup message received')
+  if (messages.length === 0) return false
   if (messages.length > 1) throw new Error('Multiple messages received on startup but expected one')
 
   const message = messages[0]
   if (message.type !== 'startup') throw new Error(`Expected startup message, got: ${message.type}`)
 
   console.log('Process system message:', message)
+
+  return true
 }
 
 function cleanup(timeout, process) {

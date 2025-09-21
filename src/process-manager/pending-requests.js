@@ -2,16 +2,17 @@ class PendingRequests {
   #requests = new Map()
 
   add(requestId, resolve, reject, timeoutMs = 10000) {
-    this.#requests.set(requestId, { resolve, reject })
-
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       this.reject(requestId, new Error('Request timeout'))
     }, timeoutMs)
+
+    this.#requests.set(requestId, { resolve, reject, timeoutId })
   }
 
   resolve(requestId, data) {
     if (this.#requests.has(requestId)) {
-      const { resolve } = this.#requests.get(requestId)
+      const { resolve, timeoutId } = this.#requests.get(requestId)
+      clearTimeout(timeoutId)
       this.#requests.delete(requestId)
       resolve(data)
     } else {
@@ -21,7 +22,8 @@ class PendingRequests {
 
   reject(requestId, error) {
     if (this.#requests.has(requestId)) {
-      const { reject } = this.#requests.get(requestId)
+      const { reject, timeoutId } = this.#requests.get(requestId)
+      clearTimeout(timeoutId)
       this.#requests.delete(requestId)
       reject(error)
     } else {

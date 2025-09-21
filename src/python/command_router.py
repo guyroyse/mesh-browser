@@ -41,7 +41,6 @@ class CommandRouter:
         """Create a standardized error response"""
         return {
             'id': request_id,
-            'success': False,
             'error': error_message
         }
 
