@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-StatusFetcher - Handles Reticulum status information
+StatusFetcher - Handles Reticulum status and system information
 
-Provides network status and interface information.
+Provides network status, interface information, and system details.
 """
 
 import RNS
+import datetime
+import sys
+import os
 from typing import Dict, Any
 
 
@@ -15,11 +18,17 @@ class StatusFetcher:
         self.identity = identity
 
     def get_status(self) -> Dict[str, Any]:
-        """Get current Reticulum status information"""
+        """Get current Reticulum status and system information"""
         status = {
+            # Reticulum network status
             'initialized': self.reticulum is not None,
             'identity_hash': self.identity.hash.hex() if self.identity else None,
-            'interfaces': []
+            'interfaces': [],
+
+            # System information
+            'python_version': sys.version,
+            'working_directory': os.getcwd(),
+            'timestamp': datetime.datetime.now().isoformat()
         }
 
         if self.reticulum:

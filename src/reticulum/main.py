@@ -7,8 +7,7 @@ Sets up the backend service with command routing and handlers.
 
 from console_server import ConsoleServer
 from command_router import CommandRouter
-from system.handler import SystemHandler
-from reticulum.handler import ReticulumHandler
+from handler.handler import ReticulumHandler
 
 
 def main():
@@ -16,10 +15,6 @@ def main():
 
     # Create command router
     router = CommandRouter()
-
-    # Create and register system handler
-    system_handler = SystemHandler()
-    router.register_commands(system_handler.get_commands())
 
     # Create and register reticulum handler
     reticulum_handler = ReticulumHandler()
