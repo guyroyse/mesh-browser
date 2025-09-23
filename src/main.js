@@ -57,7 +57,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false // Allow custom protocols in webview
+      webSecurity: false, // Allow custom protocols in webview
+      webviewTag: true // Enable webview tag
     }
   })
 
