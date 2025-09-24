@@ -1,78 +1,57 @@
 export class WebViewManager extends EventTarget {
   constructor() {
     super()
-    this.browserView = document.querySelector('webview')
+    this.canGoBack = false
+    this.canGoForward = false
+    this.isLoading = false
 
     this.setupEventListeners()
   }
 
   setupEventListeners() {
-    this.browserView.addEventListener('will-navigate', event => {
-      this.dispatchEvent(new CustomEvent('url-changed', { detail: { url: event.url } }))
-      this.dispatchEvent(new CustomEvent('loading', { detail: { message: `Loading ${event.url}...` } }))
+    // Listen for URL changes from main process
+    window.browserAPI.onUrlChanged(url => {
+      this.dispatchEvent(new CustomEvent('url-changed', { detail: { url } }))
     })
 
-    this.browserView.addEventListener('did-navigate', event => {
-      this.dispatchEvent(new CustomEvent('url-changed', { detail: { url: event.url } }))
-      this.dispatchEvent(new CustomEvent('ready'))
-      this.dispatchEvent(
-        new CustomEvent('nav-state-changed', {
-          detail: { canGoBack: this.canGoBack, canGoForward: this.canGoForward }
-        })
-      )
-    })
+    // Listen for navigation state updates from main process
+    window.browserAPI.onNavigationUpdate(data => {
+      this.canGoBack = data.canGoBack
+      this.canGoForward = data.canGoForward
+      this.isLoading = data.isLoading
 
-    this.browserView.addEventListener('did-navigate-in-page', event => {
-      this.dispatchEvent(new CustomEvent('url-changed', { detail: { url: event.url } }))
-      this.dispatchEvent(
-        new CustomEvent('nav-state-changed', {
-          detail: { canGoBack: this.canGoBack, canGoForward: this.canGoForward }
-        })
-      )
-    })
+      this.dispatchEvent(new CustomEvent('nav-state-changed', {
+        detail: { canGoBack: this.canGoBack, canGoForward: this.canGoForward }
+      }))
 
-    this.browserView.addEventListener('did-fail-load', event => {
-      this.dispatchEvent(new CustomEvent('error', { detail: { message: `Error: ${event.errorDescription}` } }))
-    })
-
-    this.browserView.addEventListener('did-start-loading', () => this.dispatchEvent(new CustomEvent('loading')))
-
-    this.browserView.addEventListener('did-stop-loading', () => {
-      this.dispatchEvent(new CustomEvent('ready'))
-      this.dispatchEvent(
-        new CustomEvent('nav-state-changed', {
-          detail: { canGoBack: this.canGoBack, canGoForward: this.canGoForward }
-        })
-      )
-    })
-
-    this.browserView.addEventListener('new-window', event => {
-      event.preventDefault()
-      this.navigate(event.url)
+      if (data.isLoading) {
+        this.dispatchEvent(new CustomEvent('loading'))
+      } else if (data.error) {
+        this.dispatchEvent(new CustomEvent('error', { detail: { message: data.error } }))
+      } else {
+        this.dispatchEvent(new CustomEvent('ready'))
+      }
     })
   }
 
-  get canGoBack() {
-    return this.browserView.canGoBack()
+  async navigate(url) {
+    await window.browserAPI.navigate(url)
   }
 
-  get canGoForward() {
-    return this.browserView.canGoForward()
+  async goBack() {
+    await window.browserAPI.goBack()
   }
 
-  navigate(url) {
-    this.browserView.src = url
+  async goForward() {
+    await window.browserAPI.goForward()
   }
 
-  goBack() {
-    if (this.browserView.canGoBack()) this.browserView.goBack()
+  async refresh() {
+    await window.browserAPI.refresh()
   }
 
-  goForward() {
-    if (this.browserView.canGoForward()) this.browserView.goForward()
-  }
-
-  refresh() {
-    this.browserView.reload()
+  async updateNavigationState() {
+    this.canGoBack = await window.browserAPI.canGoBack()
+    this.canGoForward = await window.browserAPI.canGoForward()
   }
 }

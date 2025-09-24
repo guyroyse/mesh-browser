@@ -1,10 +1,12 @@
 const path = require('path')
 
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, WebContentsView } = require('electron')
 const { reticulumManager } = require('./process-managers')
 const { registerProtocolSchemes, setupProtocolHandlers } = require('./protocol-handlers/protocol-schemes')
+const { setupIpcHandlers } = require('./ipc-handlers')
 
 let mainWindow = null
+let webContentsView = null
 
 registerProtocolSchemes()
 
@@ -57,10 +59,33 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false, // Allow custom protocols in webview
-      webviewTag: true // Enable webview tag
+      preload: path.join(__dirname, 'preload.js')
     }
   })
 
+  // Create web contents view for web content
+  webContentsView = new WebContentsView({
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false // Allow custom protocols
+    }
+  })
+
+  mainWindow.contentView.addChildView(webContentsView)
+
+  // Position web contents view below the navigation bar (estimate ~80px height)
+  const bounds = mainWindow.getContentBounds()
+  webContentsView.setBounds({ x: 0, y: 80, width: bounds.width, height: bounds.height - 80 - 30 }) // 30px for footer
+
+  // Handle window resize
+  mainWindow.on('resize', () => {
+    const bounds = mainWindow.getContentBounds()
+    webContentsView.setBounds({ x: 0, y: 80, width: bounds.width, height: bounds.height - 80 - 30 })
+  })
+
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
+
+  setupIpcHandlers(mainWindow, webContentsView)
 }
+
