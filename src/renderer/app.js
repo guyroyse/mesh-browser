@@ -1,96 +1,43 @@
-import { NavigationHistory } from './navigation-history.js'
 import { Status } from './status.js'
+import { BrowserNavigation } from './browser-navigation.js'
+import { WebViewManager } from './webview-manager.js'
 
 document.addEventListener('DOMContentLoaded', () => {
-  const backButton = document.querySelector('#back-button')
-  const forwardButton = document.querySelector('#forward-button')
-  const refreshButton = document.querySelector('#refresh-button')
-  const addressForm = document.querySelector('form')
-  const addressInput = document.querySelector('form input')
-  const browserView = document.querySelector('webview')
-
-  const navigationHistory = new NavigationHistory()
   const status = new Status()
+  const navigation = new BrowserNavigation()
+  const webViewManager = new WebViewManager()
 
-  console.log('Webview element:', browserView)
-  console.log('Navigation history:', navigationHistory)
-  console.log('Status:', status)
+  // Wire navigation events to webview manager
+  navigation.addEventListener('navigate', event => webViewManager.navigate(event.detail.url))
+  navigation.addEventListener('back', () => webViewManager.goBack())
+  navigation.addEventListener('forward', () => webViewManager.goForward())
+  navigation.addEventListener('refresh', () => webViewManager.refresh())
 
-  browserView.addEventListener('dom-ready', () => {
-    console.log('Webview is ready')
+  // Wire webview events to navigation UI
+  webViewManager.addEventListener('url-changed', event => navigation.updateUrl(event.detail.url))
+  webViewManager.addEventListener('nav-state-changed', event => {
+    const { canGoBack, canGoForward } = event.detail
+    navigation.updateNavigationState(canGoBack, canGoForward, status.isLoading)
   })
 
-  status.setReady()
-
-  // Event listeners
-  backButton.addEventListener('click', () => {
-    const url = navigationHistory.goBack()
-    if (url) loadUrl(url)
+  // Wire webview events to status
+  webViewManager.addEventListener('loading', event => {
+    status.setLoading(event.detail?.message ?? 'Loading...')
+    updateNavigationState()
   })
 
-  forwardButton.addEventListener('click', () => {
-    const url = navigationHistory.goForward()
-    if (url) loadUrl(url)
-  })
-
-  refreshButton.addEventListener('click', () => {
-    const currentUrl = addressInput.value.trim()
-    if (currentUrl) loadUrl(currentUrl)
-  })
-
-  addressForm.addEventListener('submit', event => {
-    event.preventDefault()
-    const url = addressInput.value.trim()
-    if (url) navigate(url)
-  })
-
-  browserView.addEventListener('will-navigate', event => {
-    addressInput.value = event.url
-    status.setLoading(`Loading ${event.url}`)
-  })
-
-  browserView.addEventListener('did-navigate', _event => {
+  webViewManager.addEventListener('ready', () => {
     status.setReady()
+    updateNavigationState()
   })
 
-  browserView.addEventListener('did-fail-load', event => {
-    console.log('Failed to load:', event.errorDescription, event.errorCode)
-    status.setError(`Error: ${event.errorDescription}`)
+  webViewManager.addEventListener('error', event => {
+    status.setError(event.detail.message)
+    updateNavigationState()
   })
 
-  browserView.addEventListener('did-start-loading', () => {
-    console.log('Started loading')
-    status.setLoading()
-  })
-
-  browserView.addEventListener('did-stop-loading', () => {
-    console.log('Stopped loading')
-    status.setReady()
-  })
-
-  browserView.addEventListener('new-window', event => {
-    event.preventDefault()
-    navigate(event.url)
-  })
-
-  function navigate(url) {
-    navigationHistory.add(url)
-    loadUrl(url)
-  }
-
-  function loadUrl(url) {
-    console.log('loadUrl called with:', url)
-    console.log('Current webview src before:', browserView.src)
-    status.setLoading(`Loading ${url}...`)
-    addressInput.value = url
-    browserView.src = url
-    console.log('Set browserView.src to:', url)
-    console.log('Current webview src after:', browserView.src)
-    enabledDisableNavigation()
-  }
-
-  function enabledDisableNavigation() {
-    backButton.disabled = !navigationHistory.canGoBack || status.isLoading
-    forwardButton.disabled = !navigationHistory.canGoForward || status.isLoading
+  // Helpers
+  function updateNavigationState() {
+    navigation.updateNavigationState(webViewManager.canGoBack, webViewManager.canGoForward, status.isLoading)
   }
 })
