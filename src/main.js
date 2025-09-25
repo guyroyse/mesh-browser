@@ -1,11 +1,13 @@
 const path = require('path')
 
-const { app, BrowserWindow, WebContentsView } = require('electron')
+const { app, BrowserWindow, WebContentsView, nativeTheme } = require('electron')
 const { reticulumManager } = require('./process-managers')
 const { registerProtocolSchemes, setupProtocolHandlers } = require('./protocol-handlers/protocol-schemes')
 const { setupIpcHandlers } = require('./ipc-handlers')
 
 let mainWindow = null
+let navigationView = null
+let statusView = null
 let webContentsView = null
 
 registerProtocolSchemes()
@@ -17,7 +19,7 @@ app.on('before-quit', handleBeforeQuit)
 async function handleWhenReady() {
   await startReticulumBackend()
   setupProtocolHandlers()
-  createWindow()
+  await createWindow()
 
   app.on('activate', handleActivate)
 }
@@ -52,18 +54,27 @@ async function stopReticulumBackend() {
   }
 }
 
-function createWindow() {
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      show: false // Don't show main window, we only use views
     }
   })
 
-  // Create web contents view for web content
+  // Create navigation view (header)
+  navigationView = new WebContentsView({
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'views', 'shared', 'preload.js')
+    }
+  })
+
+  // Create web contents view for web content (middle)
   webContentsView = new WebContentsView({
     webPreferences: {
       nodeIntegration: false,
@@ -72,20 +83,79 @@ function createWindow() {
     }
   })
 
-  mainWindow.contentView.addChildView(webContentsView)
-
-  // Position web contents view below the navigation bar (estimate ~80px height)
-  const bounds = mainWindow.getContentBounds()
-  webContentsView.setBounds({ x: 0, y: 80, width: bounds.width, height: bounds.height - 80 - 30 }) // 30px for footer
-
-  // Handle window resize
-  mainWindow.on('resize', () => {
-    const bounds = mainWindow.getContentBounds()
-    webContentsView.setBounds({ x: 0, y: 80, width: bounds.width, height: bounds.height - 80 - 30 })
+  // Create status view (footer)
+  statusView = new WebContentsView({
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'views', 'shared', 'preload.js')
+    }
   })
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
+  // Add all views to main window
+  mainWindow.contentView.addChildView(navigationView)
+  mainWindow.contentView.addChildView(webContentsView)
+  mainWindow.contentView.addChildView(statusView)
 
-  setupIpcHandlers(mainWindow, webContentsView)
+  // Load content for each view
+  await navigationView.webContents.loadFile(path.join(__dirname, 'views', 'navigation', 'index.html'))
+  await statusView.webContents.loadFile(path.join(__dirname, 'views', 'status', 'index.html'))
+
+  // Make sure views are repositioned on window resize
+  positionViews()
+  mainWindow.on('resize', positionViews)
+
+  // Update webContentsView background when theme changes
+  webContentsView.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1a1a1a' : '#ffffff')
+  nativeTheme.on('updated', () => {
+    webContentsView.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1a1a1a' : '#ffffff')
+  })
+
+  // Show the window
+  mainWindow.show()
+
+  setupIpcHandlers(mainWindow, navigationView, statusView, webContentsView)
 }
 
+function positionViews() {
+  const { height, width } = mainWindow.getContentBounds()
+
+  const navigationViewHeight = 50
+  const navigationViewWidth = width
+  const navigationViewX = 0
+  const navigationViewY = 0
+
+  const statusViewHeight = 25
+  const statusViewWidth = width
+  const statusViewX = 0
+  const statusViewY = height - statusViewHeight
+
+  const webContentViewHeight = height - navigationViewHeight - statusViewHeight
+  const webContentViewWidth = width
+  const webContentViewX = 0
+  const webContentViewY = navigationViewHeight
+
+  // Position navigation view at top
+  navigationView.setBounds({
+    x: navigationViewX,
+    y: navigationViewY,
+    width: navigationViewWidth,
+    height: navigationViewHeight
+  })
+
+  // Position status view at bottom
+  statusView.setBounds({
+    x: statusViewX,
+    y: statusViewY,
+    width: statusViewWidth,
+    height: statusViewHeight
+  })
+
+  // Position web content view in middle
+  webContentsView.setBounds({
+    x: webContentViewX,
+    y: webContentViewY,
+    width: webContentViewWidth,
+    height: webContentViewHeight
+  })
+}

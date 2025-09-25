@@ -1,5 +1,6 @@
 * {
   font-family: system-ui, sans-serif;
+  box-sizing: border-box;
 }
 
 :root {
@@ -42,32 +43,12 @@
   }
 }
 
+/* Common utility classes */
 body {
-  display: flex;
-  flex-direction: column;
   margin: 0;
   padding: 0;
-  height: 100vh;
-  overflow: hidden;
-  box-sizing: border-box;
   color: var(--text-primary);
   background: var(--bg-primary);
-}
-
-header {
-  display: flex;
-  flex-direction: row;
-  padding: 10px 10px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-nav {
-  display: flex;
-  gap: 1px;
 }
 
 .nav-button {
@@ -94,78 +75,14 @@ nav {
   opacity: 0.3;
 }
 
-form {
-  flex: 1;
-  display: flex;
-  gap: 5px;
-}
-
-form input {
-  flex: 1;
-  padding: 6px 12px;
-  border: 1px solid var(--border-input);
-  border-radius: 4px;
-  font-size: 14px;
-  font-family: inherit;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-form input:focus {
-  outline: none;
-  border-color: var(--text-accent);
-  box-shadow: 0 0 4px var(--glow-color);
-}
-
-main {
-  flex: 1;
-  overflow: auto;
-  background: var(--bg-primary);
-}
-
-webview {
-  width: 100%;
-  height: 100%;
-}
-
-footer {
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  padding: 5px 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#status-icon {
-  font-size: 8px;
-  transition: color 0.3s ease;
-  padding: 4px 0;
-}
-
-/* Status states */
-#status-icon.ready {
-  color: var(--status-ready);
-}
-
-#status-icon.loading {
-  color: var(--status-loading);
-  animation: pulse-glow 1.5s ease-in-out infinite;
-}
-
-#status-icon.error {
-  color: var(--status-error);
-}
-
-/* Animations */
+/* Status animations */
 @keyframes pulse-glow {
-  0%,
-  100% {
-    text-shadow: 0 0 2px rgba(var(--status-loading-glow), 0.9);
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(var(--status-loading-glow), 0.8));
   }
   50% {
-    text-shadow: 0 0 4px rgba(var(--status-loading-glow), 0.9);
+    opacity: 0.6;
+    filter: drop-shadow(0 0 6px rgba(var(--status-loading-glow), 1));
   }
 }

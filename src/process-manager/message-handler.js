@@ -5,6 +5,7 @@ const { PendingRequests } = require('./pending-requests')
 class MessageHandler {
   #pendingRequests = new PendingRequests()
   #process = null
+  #buffer = ''
 
   attachTo(process) {
     process.stdout.on('data', data => this.#onStdOut(data))
@@ -47,10 +48,18 @@ class MessageHandler {
   }
 
   #onStdOut(data) {
-    console.log('Process stdout (handler):', data.toString().trim())
+    // Accumulate data in buffer
+    this.#buffer += data.toString()
 
-    const messages = parseDataToMessages(data)
-    for (const message of messages) this.#processMessage(message)
+    // Check if we have complete lines (ending with \n)
+    if (this.#buffer.endsWith('\n')) {
+      // Process all complete lines
+      console.log('Process stdout (handler):', this.#buffer.trim())
+      const messages = parseDataToMessages(this.#buffer)
+      for (const message of messages) this.#processMessage(message)
+      this.#buffer = ''
+    }
+    // If no trailing newline, keep buffering until we get a complete message
   }
 
   #onStdErr(data) {

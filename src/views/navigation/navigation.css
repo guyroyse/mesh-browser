@@ -1,0 +1,39 @@
+body {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  padding: 10px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+nav {
+  display: flex;
+  gap: 1px;
+}
+
+form {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+}
+
+#address-bar {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+#address-bar:focus {
+  outline: none;
+  border-color: var(--text-accent);
+  box-shadow: 0 0 0 2px var(--glow-color);
+}

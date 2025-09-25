@@ -79,44 +79,37 @@ class ResponseParser:
         Returns:
             Dict with 'content', 'content_type', 'status_code', 'encoding'
         """
-        try:
-            # Try to decode as UTF-8 to check for HTTP headers
-            content_str = content.decode('utf-8')
+        # Check if content starts with HTTP headers by looking for the pattern in bytes
+        if b'\r\n\r\n' in content:
+            # HTTP-like response with headers - split on bytes, not string
+            headers_bytes, body_bytes = content.split(b'\r\n\r\n', 1)
 
-            if '\r\n\r\n' in content_str:
-                # HTTP-like response with headers
-                headers_str, body_str = content_str.split('\r\n\r\n', 1)
-
+            try:
+                # Decode headers as UTF-8 for parsing
+                headers_str = headers_bytes.decode('utf-8')
                 content_type = ResponseParser._extract_content_type(headers_str)
                 if not content_type:
                     content_type = ResponseParser._guess_content_type(path)
 
-                # Return body as base64 for binary safety in JSON
+                # Return body as base64 (body_bytes is already bytes)
                 return {
-                    'content': base64.b64encode(body_str.encode('utf-8')).decode('ascii'),
+                    'content': base64.b64encode(body_bytes).decode('ascii'),
                     'content_type': content_type,
                     'status_code': 200,
                     'encoding': 'base64'
                 }
-            else:
-                # No headers, treat as raw content
-                content_type = ResponseParser._guess_content_type(path)
-                return {
-                    'content': base64.b64encode(content).decode('ascii'),
-                    'content_type': content_type,
-                    'status_code': 200,
-                    'encoding': 'base64'
-                }
+            except UnicodeDecodeError:
+                # Headers couldn't be decoded as UTF-8, treat entire content as binary
+                pass
 
-        except UnicodeDecodeError:
-            # Binary content, return as base64
-            content_type = ResponseParser._guess_content_type(path)
-            return {
-                'content': base64.b64encode(content).decode('ascii'),
-                'content_type': content_type,
-                'status_code': 200,
-                'encoding': 'base64'
-            }
+        # No HTTP headers or headers couldn't be decoded - treat as raw binary content
+        content_type = ResponseParser._guess_content_type(path)
+        return {
+            'content': base64.b64encode(content).decode('ascii'),
+            'content_type': content_type,
+            'status_code': 200,
+            'encoding': 'base64'
+        }
 
     @staticmethod
     def _extract_content_type(headers_str: str) -> str:

@@ -100,8 +100,13 @@ class ConsoleServer:
     def _send_message(self, message: Dict[str, Any]):
         """Send structured JSON message to Electron frontend via stdout with frame prefix"""
         json_str = json.dumps(message)
-        framed_message = f"MESHBROWSER_MSG: {json_str}"
-        print(framed_message, flush=True)
+        framed_message = f"MESHBROWSER_MSG: {json_str}\n"
+
+        # Debug: Log message size
+        self._log_debug(f"Sending message of {len(framed_message)} bytes")
+
+        sys.stdout.write(framed_message)
+        sys.stdout.flush()
 
     def _send_startup_message(self):
         """Send startup notification to stdout as JSON for PythonManager"""

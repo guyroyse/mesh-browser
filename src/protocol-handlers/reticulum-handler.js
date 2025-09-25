@@ -26,6 +26,13 @@ async function handleRequest(request) {
   // Decode content and create Response
   const content = Buffer.from(response.content, 'base64')
 
+  // Debug: Check if content looks like image data
+  const isImage = response.content_type && response.content_type.startsWith('image/')
+  if (isImage) {
+    console.log(`Protocol handler: Serving image/${response.content_type} - ${content.length} bytes`)
+    console.log(`Protocol handler: First 20 bytes: ${Array.from(content.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`)
+  }
+
   console.log(`Protocol handler: Successfully served ${content.length} bytes for ${url}`)
 
   return new Response(content, {

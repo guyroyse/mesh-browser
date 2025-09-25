@@ -1,0 +1,32 @@
+body {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#status-icon {
+  font-size: 8px;
+  transition: color 0.3s ease;
+  padding: 4px 0;
+}
+
+/* Status states */
+#status-icon.ready {
+  color: var(--status-ready);
+}
+
+#status-icon.loading {
+  color: var(--status-loading);
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+#status-icon.error {
+  color: var(--status-error);
+}

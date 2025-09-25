@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Navigation</title>
+    <link rel="stylesheet" href="../shared/common.css" />
+    <link rel="stylesheet" href="../shared/assets/fontawesome/css/all.min.css" />
+    <link rel="stylesheet" href="navigation.css" />
+    <script src="navigation.js" defer></script>
+  </head>
+  <body>
+    <nav>
+      <button id="back-button" class="nav-button" disabled><i class="fas fa-arrow-left"></i></button>
+      <button id="forward-button" class="nav-button" disabled><i class="fas fa-arrow-right"></i></button>
+      <button id="refresh-button" class="nav-button"><i class="fas fa-sync-alt"></i></button>
+    </nav>
+    <form id="url-form">
+      <input type="text" id="address-bar" placeholder="Enter reticulum:// or about:// URL" />
+      <button type="submit" class="nav-button"><i class="fas fa-play"></i></button>
+    </form>
+  </body>
+</html>

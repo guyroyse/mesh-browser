@@ -1,12 +1,16 @@
 const { ipcMain } = require('electron')
 const { reticulumManager } = require('./process-managers')
 
+let navigationView = null
+let statusView = null
 let webContentsView = null
 let mainWindow = null
 
-// Initialize IPC handlers with references to main window and web contents view
-function setupIpcHandlers(mainWin, webView) {
+// Initialize IPC handlers with references to all views
+function setupIpcHandlers(mainWin, navView, statView, webView) {
   mainWindow = mainWin
+  navigationView = navView
+  statusView = statView
   webContentsView = webView
 
   setupNavigationHandlers()
@@ -87,21 +91,26 @@ function setupWebContentsViewEvents() {
   if (!webContentsView) return
 
   webContentsView.webContents.on('did-navigate', (event, url) => {
-    mainWindow.webContents.send('url-changed', url)
+    // Send URL changes to navigation view
+    navigationView.webContents.send('url-changed', url)
+    // Send navigation updates to both navigation and status views
     sendNavigationUpdate()
   })
 
   webContentsView.webContents.on('did-navigate-in-page', (event, url) => {
-    mainWindow.webContents.send('url-changed', url)
+    navigationView.webContents.send('url-changed', url)
     sendNavigationUpdate()
   })
 
   webContentsView.webContents.on('did-start-loading', () => {
-    mainWindow.webContents.send('navigation-update', {
+    const updateData = {
       canGoBack: webContentsView.webContents.navigationHistory.canGoBack(),
       canGoForward: webContentsView.webContents.navigationHistory.canGoForward(),
       isLoading: true
-    })
+    }
+
+    navigationView.webContents.send('navigation-update', updateData)
+    statusView.webContents.send('navigation-update', updateData)
   })
 
   webContentsView.webContents.on('did-stop-loading', () => {
@@ -109,22 +118,28 @@ function setupWebContentsViewEvents() {
   })
 
   webContentsView.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    mainWindow.webContents.send('navigation-update', {
+    const updateData = {
       canGoBack: webContentsView.webContents.navigationHistory.canGoBack(),
       canGoForward: webContentsView.webContents.navigationHistory.canGoForward(),
       isLoading: false,
       error: errorDescription
-    })
+    }
+
+    navigationView.webContents.send('navigation-update', updateData)
+    statusView.webContents.send('navigation-update', updateData)
   })
 }
 
 function sendNavigationUpdate() {
-  if (webContentsView && mainWindow) {
-    mainWindow.webContents.send('navigation-update', {
+  if (webContentsView && navigationView && statusView) {
+    const updateData = {
       canGoBack: webContentsView.webContents.navigationHistory.canGoBack(),
       canGoForward: webContentsView.webContents.navigationHistory.canGoForward(),
       isLoading: webContentsView.webContents.isLoading()
-    })
+    }
+
+    navigationView.webContents.send('navigation-update', updateData)
+    statusView.webContents.send('navigation-update', updateData)
   }
 }
 
