@@ -4,6 +4,7 @@ const { parseDataToMessages } = require('./utils')
 async function startProcess(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const process = spawnProcess(command, args, options)
+    let httpPort = null
 
     const timeout = setTimeout(() => {
       cleanup(timeout, process)
@@ -17,14 +18,16 @@ async function startProcess(command, args, options = {}) {
 
     const cleanupAndResolve = () => {
       cleanup(timeout, process)
-      resolve(process)
+      resolve({ process, httpPort })
     }
 
     process.on('error', cleanupAndReject)
 
     process.stdout.on('data', data => {
       try {
-        if (processStartupMessage(data)) cleanupAndResolve()
+        const result = processStartupMessage(data)
+        if (result.httpPort) httpPort = result.httpPort
+        if (result.ready) cleanupAndResolve()
       } catch (error) {
         cleanupAndReject(error)
       }
@@ -40,15 +43,27 @@ function spawnProcess(command, args, options) {
 function processStartupMessage(data) {
   console.log('Process stdout (startup):', data.toString())
   const messages = parseDataToMessages(data)
-  if (messages.length === 0) return false
-  if (messages.length > 1) throw new Error('Multiple messages received on startup but expected one')
+  if (messages.length === 0) return { ready: false, httpPort: null }
 
-  const message = messages[0]
-  if (message.type !== 'startup') throw new Error(`Expected startup message, got: ${message.type}`)
+  let httpPort = null
+  let ready = false
 
-  console.log('Process system message:', message)
+  // Process all messages during startup
+  for (const message of messages) {
+    console.log('Process system message:', message)
 
-  return true
+    // Capture HTTP port from http_server_ready message
+    if (message.type === 'http_server_ready' && message.port) {
+      httpPort = message.port
+    }
+
+    // Consider process ready when we receive the 'startup' message
+    if (message.type === 'startup') {
+      ready = true
+    }
+  }
+
+  return { ready, httpPort }
 }
 
 function cleanup(timeout, process) {

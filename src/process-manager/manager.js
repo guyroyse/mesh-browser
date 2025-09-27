@@ -8,16 +8,29 @@ class ProcessManager {
   #options
   #handler
   #process = null
+  #httpPort = null
 
   constructor(command, args, options = {}) {
     this.#command = command
     this.#args = args
     this.#options = options
     this.#handler = new MessageHandler()
+
+    // Listen for HTTP server ready event
+    this.#handler.on('http_server_ready', (data) => {
+      this.#httpPort = data.port
+      console.log(`HTTP server ready on port ${this.#httpPort}`)
+    })
   }
 
   async start() {
-    const process = await startProcess(this.#command, this.#args, this.#options)
+    const { process, httpPort } = await startProcess(this.#command, this.#args, this.#options)
+
+    if (httpPort) {
+      this.#httpPort = httpPort
+      console.log(`ProcessManager: HTTP server ready on port ${this.#httpPort}`)
+    }
+
     this.#handler.attachTo(process)
     this.#process = process
   }
@@ -32,6 +45,11 @@ class ProcessManager {
     this.#handler.detachFrom()
     await stopProcess(this.#process)
     this.#process = null
+    this.#httpPort = null
+  }
+
+  getHttpPort() {
+    return this.#httpPort
   }
 }
 

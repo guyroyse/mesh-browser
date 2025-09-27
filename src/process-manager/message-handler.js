@@ -1,11 +1,16 @@
+const { EventEmitter } = require('events')
 const { ulid } = require('ulid')
 const { parseDataToMessages } = require('./utils')
 const { PendingRequests } = require('./pending-requests')
 
-class MessageHandler {
+class MessageHandler extends EventEmitter {
   #pendingRequests = new PendingRequests()
   #process = null
   #buffer = ''
+
+  constructor() {
+    super()
+  }
 
   attachTo(process) {
     process.stdout.on('data', data => this.#onStdOut(data))
@@ -77,12 +82,48 @@ class MessageHandler {
 
   #processMessage(message) {
     console.log('Processing message:', message)
-    const requestId = message.id
 
-    if (message.error) {
-      this.#pendingRequests.reject(requestId, new Error(message.error))
-    } else {
-      this.#pendingRequests.resolve(requestId, message.data)
+    // Handle different frame types
+    const frame = message._frame
+
+    if (frame === 'ERROR') {
+      console.error('Backend Error:', message.message)
+      this.emit('error', message)
+      return
+    }
+
+    if (frame === 'WARNING') {
+      console.warn('Backend Warning:', message.message)
+      this.emit('warning', message)
+      return
+    }
+
+    if (frame === 'INFO') {
+      console.info('Backend Info:', message.message)
+      this.emit('info', message)
+      return
+    }
+
+    if (frame === 'DEBUG') {
+      console.debug('Backend Debug:', message.message)
+      this.emit('debug', message)
+      return
+    }
+
+    // Handle special message types (like server startup notifications)
+    if (message.type) {
+      this.emit(message.type, message)
+      return
+    }
+
+    // Handle request/response messages (MESHBROWSER_MSG frame)
+    const requestId = message.id
+    if (requestId) {
+      if (message.error) {
+        this.#pendingRequests.reject(requestId, new Error(message.error))
+      } else {
+        this.#pendingRequests.resolve(requestId, message.data)
+      }
     }
   }
 }

@@ -52,15 +52,47 @@ function parseReticulumUrl(url) {
   return reticulumUrl
 }
 
-// Fetch content from Python backend
+// Fetch content from Python backend via HTTP
 async function fetchFromBackend(reticulumUrl) {
-  const response = await reticulumManager.sendCommand('fetch-page', { url: reticulumUrl })
-
-  if (!response || !response.content) {
-    throw new Error('No content received from Reticulum network')
+  // Get HTTP port from process manager
+  const httpPort = reticulumManager.getHttpPort()
+  if (!httpPort) {
+    throw new Error('HTTP server not ready')
   }
 
-  return response
+  // Make HTTP request to /proxy/reticulum endpoint
+  const response = await fetch(`http://localhost:${httpPort}/proxy/reticulum`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      url: reticulumUrl,
+      method: 'GET'
+    })
+  })
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`
+    try {
+      const errorData = await response.json()
+      errorMessage = errorData.error || errorMessage
+    } catch (e) {
+      // If response isn't JSON, use status text
+      errorMessage = response.statusText || errorMessage
+    }
+    throw new Error(errorMessage)
+  }
+
+  // Return response data that matches expected format
+  const contentBuffer = await response.arrayBuffer()
+  const content = Buffer.from(contentBuffer).toString('base64')
+
+  return {
+    content: content,
+    content_type: response.headers.get('content-type') || 'text/html',
+    status_code: response.status
+  }
 }
 
 // Create response headers

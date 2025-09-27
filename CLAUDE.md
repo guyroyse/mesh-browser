@@ -109,35 +109,41 @@ protocol.registerStreamProtocol('reticulum', async (request, callback) => {
 
 ### Python Backend Architecture
 ```python
-# Clean modular architecture with protocol-based organization
+# Hybrid Architecture: HTTP for data flow, stdio for process control
 
 # Main entry point
-main.py -> ConsoleServer(CommandRouter)
+main.py -> HTTP Server + Console Manager
 
-# IPC Communication Layer
-class ConsoleServer:
-    def run():                    # Main stdin/stdout JSON loop
-    def _process_next_line():     # Read and validate input
-    def _process_message():       # Parse JSON messages
-    def _handle_message():        # Route commands, handle shutdown
-    def _send_message():          # Send JSON responses
-    def _log_info/debug/error():  # stderr logging
+# HTTP Data Layer (Parallel Processing)
+class MeshBrowserHTTPServer:
+    def start():                  # Start ThreadingHTTPServer
+    def _handle_reticulum_proxy(): # Handle /proxy/reticulum requests
+    def _send_reticulum_response(): # Native HTTP responses
 
-# Command Routing Layer
-class CommandRouter:
-    def register_commands():      # Register handler classes
-    def handle_command():         # Route to appropriate handlers
+# Console Communication Layer (Process Lifecycle)
+class ConsoleManager:
+    def run():                    # Main stdin/stdout lifecycle loop
+    def _wait_for_command():      # Wait for shutdown commands
+    def _process_shutdown():      # Handle graceful shutdown
+    def messenger:                # ConsoleMessageSender for structured logging
+
+class ConsoleMessageSender:
+    def send_message():           # Framed JSON messaging (ERROR:, WARNING:, etc.)
+    def send_error/warning():     # Structured log messages
 
 # Protocol Modules (Extensible)
 src/python/
-├── system/
-│   └── handler.py               # SystemHandler: ping, version
-├── reticulum/
-│   ├── handler.py               # ReticulumHandler: fetch-page, status
-│   ├── client.py                # ReticulumClient: networking coordinator
-│   ├── page_fetcher.py          # PageFetcher: content retrieval
-│   └── status_fetcher.py        # StatusFetcher: network information
-└── ipfs/                        # Future IPFS support
+├── main.py                      # Entry point, starts HTTP + Console
+├── console/                     # Process communication utilities
+│   ├── manager.py              # ConsoleManager: process lifecycle
+│   └── message_sender.py       # ConsoleMessageSender: structured messaging
+├── command_router.py           # CommandRouter: used by HTTP server
+├── http_server.py              # MeshBrowserHTTPServer: /proxy/* endpoints
+└── reticulum/
+    ├── handler.py              # ReticulumHandler: fetch-page, status
+    ├── client.py               # ReticulumClient: networking coordinator
+    ├── page_fetcher.py         # PageFetcher: content retrieval
+    └── status_fetcher.py       # StatusFetcher: network information
 ```
 
 ## Development Phases
@@ -317,26 +323,26 @@ browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
 ```
 
 **Recent Major Progress (Latest Sessions):**
-- ✅ **Major Architecture Refactoring** - Clean separation of concerns
+- ✅ **HTTP Architecture Refactor** - Replaced serial stdio with parallel HTTP communication
+- ✅ **ThreadingHTTPServer** - Enables simultaneous parallel requests for faster page loading
+- ✅ **Hybrid Communication** - HTTP for data flow, stdio for process lifecycle management
+- ✅ **Clean API Design** - `/proxy/reticulum` endpoint with native HTTP semantics
+- ✅ **Python Backend Reorganization** - Moved to `src/python/` with modular structure
+- ✅ **Console Package** - Extracted ConsoleManager and ConsoleMessageSender utilities
+- ✅ **Structured Messaging** - Framed messages (ERROR:, WARNING:, INFO:, DEBUG:) replace stderr
 - ✅ **Protocol Handler Modernization** - Updated to modern `protocol.handle()` API
-- ✅ **Consolidated IPC** - Eliminated all unnecessary IPC, protocol handlers handle everything
-- ✅ **Backend Reorganization** - Moved to `src/reticulum/` with clean handler structure
-- ✅ **Simplified Renderer** - 50%+ code reduction, just navigation + webview
-- ✅ **Fixed Electron Protocol Bug** - Single scheme registration prevents silent overwrites
-- ✅ **Direct Imports** - Protocol handlers import dependencies directly, no parameter passing
-- ✅ **System Info Consolidation** - Combined version + reticulum status into single command
+- ✅ **Multi-frame Message Parsing** - Electron handles all frame types from Python backend
 - ✅ **UI Modernization Complete** - Semantic HTML, CSS custom properties, Font Awesome icons
 - ✅ **Modular JavaScript** - Navigation history and status management extracted to separate classes
 - ✅ **Webview Configuration** - Added `webviewTag: true` to enable webview functionality
 - ✅ **Protocol-Agnostic Browser** - Handles any URL protocol, not just mesh protocols
 - ✅ **Large File Support** - Fixed JSON message buffering for large content transmission
 - ✅ **Binary Content Handling** - Proper HTTP header separation for images and binary files
-- ✅ **WebContentsView UI** - Fixed view positioning and dark/light mode background colors
 
 **Current State:**
-MeshBrowser now has a **clean, modern architecture** with **professional UI** and **full protocol support**! The app features:
-- **Protocol handlers** that work like real web protocols (`reticulum://`, `about://`)
-- **Zero unnecessary IPC** - Everything flows through protocol handlers
+MeshBrowser now has a **hybrid parallel architecture** with **professional UI** and **full protocol support**! The app features:
+- **HTTP data flow** - Parallel requests via ThreadingHTTPServer for web-like performance
+- **stdio process control** - Robust lifecycle management and structured logging
 - **Clean backend structure** - All Reticulum code in `src/reticulum/`
 - **Modern UI** - Semantic HTML, CSS custom properties, dark mode support, Font Awesome icons
 - **Modular JavaScript** - ES6 modules with clean separation of concerns
