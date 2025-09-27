@@ -16,47 +16,61 @@ class ConsoleMessageSender:
 
     def __init__(self, output_stream: TextIO = None):
         """Initialize with output stream (defaults to stdout)"""
+
         self.output_stream = output_stream or sys.stdout
 
-    def send_message(self, frame: str, message: Dict[str, Any]):
-        """Send framed JSON message to output stream"""
-        json_str = json.dumps(message)
-        framed_message = f"{frame}: {json_str}\n"
-        self.output_stream.write(framed_message)
-        self.output_stream.flush()
 
     def send_error(self, error: str, **extra_data):
         """Send ERROR frame message"""
+
         error_data = {
-            'message': error,
             'type': 'error',
+            'message': error,
             **extra_data
         }
+
         self.send_message('ERROR', error_data)
+
 
     def send_warning(self, warning: str, **extra_data):
         """Send WARNING frame message"""
         warning_data = {
-            'message': warning,
             'type': 'warning',
+            'message': warning,
             **extra_data
         }
+
         self.send_message('WARNING', warning_data)
+
 
     def send_info(self, info: str, **extra_data):
         """Send INFO frame message"""
+
         info_data = {
-            'message': info,
             'type': 'info',
+            'message': info,
             **extra_data
         }
+
         self.send_message('INFO', info_data)
+
 
     def send_debug(self, debug: str, **extra_data):
         """Send DEBUG frame message"""
+
         debug_data = {
-            'message': debug,
             'type': 'debug',
+            'message': debug,
             **extra_data
         }
+
         self.send_message('DEBUG', debug_data)
+
+
+    def send_message(self, frame: str, message: Dict[str, Any]):
+        """Send framed JSON message to output stream"""
+
+        json_str = json.dumps(message)
+        framed_message = f"{frame}: {json_str}\n"
+        self.output_stream.write(framed_message)
+        self.output_stream.flush()

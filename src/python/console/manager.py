@@ -59,13 +59,6 @@ class ConsoleManager:
         """Handle shutdown procedure"""
 
         self.running = False
-
-        response = {
-            'id': message.get('id'),
-            'data': {'message': 'Python backend shutting down'}
-        }
-
-        self.messenger.send_message('MESHBROWSER_MSG', response)
         return False
 
 

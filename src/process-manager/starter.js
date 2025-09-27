@@ -52,8 +52,8 @@ function processStartupMessage(data) {
   for (const message of messages) {
     console.log('Process system message:', message)
 
-    // Capture HTTP port from http_server_ready message
-    if (message.type === 'http_server_ready' && message.port) {
+    // Capture HTTP port from HTTP_STARTUP message
+    if (message.type === 'HTTP_STARTUP' && message.port) {
       httpPort = message.port
     }
 

@@ -17,7 +17,7 @@ class ProcessManager {
     this.#handler = new MessageHandler()
 
     // Listen for HTTP server ready event
-    this.#handler.on('http_server_ready', (data) => {
+    this.#handler.on('HTTP_STARTUP', (data) => {
       this.#httpPort = data.port
       console.log(`HTTP server ready on port ${this.#httpPort}`)
     })
