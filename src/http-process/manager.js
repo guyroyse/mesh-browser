@@ -2,7 +2,7 @@ const { startProcess } = require('./starter')
 const { MessageHandler } = require('./message-handler')
 const { stopProcess } = require('./stopper')
 
-class ProcessManager {
+class HttpProcessManager {
   #command
   #args
   #options
@@ -17,10 +17,8 @@ class ProcessManager {
     this.#handler = new MessageHandler()
 
     // Listen for HTTP server ready event
-    this.#handler.on('HTTP_STARTUP', (data) => {
-      console.log('ProcessManager: HTTP_STARTUP event received:', data)
+    this.#handler.on('HTTP_STARTUP', data => {
       this.#httpPort = data.port
-      console.log(`ProcessManager: HTTP server ready on port ${this.#httpPort}`)
     })
   }
 
@@ -29,16 +27,11 @@ class ProcessManager {
 
     if (httpPort) {
       this.#httpPort = httpPort
-      console.log(`ProcessManager: HTTP server ready on port ${this.#httpPort}`)
+      console.log(`HttpProcessManager: HTTP server ready on port ${this.#httpPort}`)
     }
 
     this.#handler.attachTo(process)
     this.#process = process
-  }
-
-  async sendCommand(command, data = {}) {
-    if (!this.#process) throw new Error('Process not ready')
-    return await this.#handler.sendCommand(command, data)
   }
 
   async stop() {
@@ -54,4 +47,4 @@ class ProcessManager {
   }
 }
 
-module.exports = { ProcessManager }
+module.exports = { HttpProcessManager }

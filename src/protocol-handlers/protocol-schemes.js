@@ -1,11 +1,11 @@
 const { protocol } = require('electron')
 const { setupAboutHandler } = require('./about-handler')
-const { setupReticulumHandler } = require('./reticulum-handler')
+const { setupRwebHandler } = require('./rweb-handler')
 
 function registerProtocolSchemes() {
   protocol.registerSchemesAsPrivileged([
     {
-      scheme: 'reticulum',
+      scheme: 'rweb',
       privileges: {
         supportFetchAPI: true,
         corsEnabled: true,
@@ -31,7 +31,7 @@ function registerProtocolSchemes() {
 
 function setupProtocolHandlers() {
   setupAboutHandler()
-  setupReticulumHandler()
+  setupRwebHandler()
 }
 
 module.exports = { registerProtocolSchemes, setupProtocolHandlers }

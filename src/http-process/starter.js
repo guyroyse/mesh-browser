@@ -1,5 +1,7 @@
 const { spawn } = require('child_process')
-const { parseDataToMessages } = require('./utils')
+
+// Lifecycle frame types we care about during startup
+const STARTUP_FRAMES = ['STARTUP', 'HTTP_STARTUP', 'ERROR']
 
 async function startProcess(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -41,8 +43,8 @@ function spawnProcess(command, args, options) {
 }
 
 function processStartupMessage(data) {
-  console.log('Process stdout (startup):', data.toString())
-  const messages = parseDataToMessages(data)
+  console.log(data.toString().trim())
+  const messages = parseStartupMessages(data.toString())
   if (messages.length === 0) return { ready: false, httpPort: null }
 
   let httpPort = null
@@ -50,8 +52,6 @@ function processStartupMessage(data) {
 
   // Process all messages during startup
   for (const message of messages) {
-    console.log('Process system message:', message)
-
     // Capture HTTP port from HTTP_STARTUP message (check _frame)
     if (message._frame === 'HTTP_STARTUP' && message.port) {
       httpPort = message.port
@@ -66,6 +66,48 @@ function processStartupMessage(data) {
   }
 
   return { ready, httpPort }
+}
+
+function parseStartupMessages(data) {
+  return data
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && hasValidFrame(line))
+    .map(line => {
+      const { frame, message } = parseFramedMessage(line)
+      const parsedMessage = tryParseJSON(message)
+      if (parsedMessage) {
+        parsedMessage._frame = frame
+      }
+      return parsedMessage
+    })
+    .filter(msg => msg !== null)
+}
+
+function hasValidFrame(line) {
+  return STARTUP_FRAMES.some(frame => line.startsWith(`${frame}: `))
+}
+
+function parseFramedMessage(line) {
+  for (const frame of STARTUP_FRAMES) {
+    const prefix = `${frame}: `
+    if (line.startsWith(prefix)) {
+      return {
+        frame,
+        message: line.substring(prefix.length)
+      }
+    }
+  }
+  throw new Error(`No valid frame found in line: ${line}`)
+}
+
+function tryParseJSON(line) {
+  try {
+    return JSON.parse(line)
+  } catch (e) {
+    console.error('Failed to parse framed message JSON:', line, e)
+  }
+  return null
 }
 
 function cleanup(timeout, process) {

@@ -1,9 +1,9 @@
 const { protocol } = require('electron')
-const { reticulumManager } = require('../process-managers')
+const { pythonManager } = require('../process-managers')
 
 // Setup the protocol handler implementation (call after app is ready)
-function setupReticulumHandler() {
-  protocol.handle('reticulum', async (request) => {
+function setupRwebHandler() {
+  protocol.handle('rweb', async (request) => {
     try {
       return await handleRequest(request)
     } catch (error) {
@@ -12,16 +12,16 @@ function setupReticulumHandler() {
   })
 }
 
-// Handle reticulum:// requests
+// Handle rweb:// requests
 async function handleRequest(request) {
   const url = request.url
   console.log(`Protocol handler: Fetching ${url}`)
 
-  // Extract hash/path from reticulum://hash/path
-  const reticulumUrl = parseReticulumUrl(url)
+  // Extract hash/path from rweb://hash/path
+  const rwebUrl = parseRwebUrl(url)
 
   // Fetch content using Python backend
-  const response = await fetchFromBackend(reticulumUrl)
+  const response = await fetchFromBackend(rwebUrl)
 
   // Decode content and create Response
   const content = Buffer.from(response.content, 'base64')
@@ -41,21 +41,21 @@ async function handleRequest(request) {
   })
 }
 
-// Parse reticulum:// URL to extract the hash/path portion
-function parseReticulumUrl(url) {
-  const reticulumUrl = url.substring(12) // Remove 'reticulum://'
+// Parse rweb:// URL to extract the hash/path portion
+function parseRwebUrl(url) {
+  const rwebUrl = url.substring(7) // Remove 'rweb://'
 
-  if (!reticulumUrl) {
-    throw new Error('Invalid reticulum URL format')
+  if (!rwebUrl) {
+    throw new Error('Invalid rweb URL format')
   }
 
-  return reticulumUrl
+  return rwebUrl
 }
 
 // Fetch content from Python backend via HTTP
-async function fetchFromBackend(reticulumUrl) {
+async function fetchFromBackend(rwebUrl) {
   // Get HTTP port from process manager
-  const httpPort = reticulumManager.getHttpPort()
+  const httpPort = pythonManager.getHttpPort()
   if (!httpPort) {
     throw new Error('HTTP server not ready')
   }
@@ -67,7 +67,7 @@ async function fetchFromBackend(reticulumUrl) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      url: reticulumUrl,
+      url: rwebUrl,
       method: 'GET'
     })
   })
@@ -136,7 +136,7 @@ function generateErrorPage(url, errorMessage) {
       </head>
       <body>
         <div class="error">
-          <h2>Failed to load Reticulum content</h2>
+          <h2>Failed to load RWeb content</h2>
           <p><strong>Error:</strong> ${escapeHtml(errorMessage)}</p>
           <p><strong>URL:</strong> <code>${escapeHtml(url)}</code></p>
           <p>Make sure the destination is reachable on the Reticulum network.</p>
@@ -157,4 +157,4 @@ function escapeHtml(text) {
     .replace(/'/g, '&#39;')
 }
 
-module.exports = { setupReticulumHandler }
+module.exports = { setupRwebHandler }

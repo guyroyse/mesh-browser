@@ -24,6 +24,16 @@ class HTTP_API_Handler(BaseHTTPRequestHandler):
         self.reticulum_client = reticulum_client
         super().__init__(*args, **kwargs)
 
+    def do_GET(self):
+        """Handle GET requests"""
+        try:
+            if self.path == '/api/status':
+                self._handle_status_request()
+            else:
+                self._send_error(404, "Not Found")
+        except Exception as e:
+            self._send_error(500, f"Internal Server Error: {str(e)}")
+
     def do_POST(self):
         """Handle POST requests to /proxy/reticulum endpoint"""
         try:
@@ -34,6 +44,21 @@ class HTTP_API_Handler(BaseHTTPRequestHandler):
                 self._send_error(404, "Not Found")
         except Exception as e:
             self._send_error(500, f"Internal Server Error: {str(e)}")
+
+    def _handle_status_request(self):
+        """Handle status requests"""
+        try:
+            status_data = self.reticulum_client.get_status()
+            status_json = json.dumps(status_data)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(status_json)))
+            self.end_headers()
+
+            self.wfile.write(status_json.encode('utf-8'))
+        except Exception as e:
+            self._send_error(500, f"Failed to get status: {str(e)}")
 
     def _handle_reticulum_proxy(self):
         """Handle proxy requests to Reticulum network"""

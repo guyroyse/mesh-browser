@@ -1,7 +1,7 @@
 const path = require('path')
 
-const { ProcessManager } = require('./process-manager/manager')
+const { HttpProcessManager } = require('./http-process/manager')
 
 module.exports = {
-  reticulumManager: new ProcessManager('python', [path.join(__dirname, 'python', 'main.py')])
+  pythonManager: new HttpProcessManager('python', [path.join(__dirname, 'python', 'main.py')])
 }

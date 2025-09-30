@@ -12,7 +12,7 @@ MeshBrowser is part of the **MeshWeb** project - a universal browser for decentr
 
 - **Web-like browsing** over decentralized networks (starting with Reticulum)
 - **Familiar interface** - address bar, back/forward, bookmarks
-- **Protocol support** - handles `reticulum://` URLs (future: `ipfs://`, `hyper://`)
+- **Protocol support** - handles `rweb://` URLs (future: `ipfs://`, `hyper://`)
 - **Server discovery** - finds available RServers on the network
 - **Non-technical user friendly** - install and browse, no configuration needed
 - **Network visualization** - shows mesh connectivity, encryption status
@@ -26,7 +26,7 @@ MeshBrowser Desktop App
 │   ├── Main Process (src/main.js)
 │   ├── Protocol Handlers (src/protocol-handlers/)
 │   │   ├── protocol-schemes.js     # Single scheme registration
-│   │   ├── reticulum-handler.js    # reticulum:// protocol
+│   │   ├── rweb-handler.js         # rweb:// protocol
 │   │   └── about-handler.js        # about:// protocol
 │   ├── Renderer Process (src/renderer/)
 │   │   ├── index.html             # Browser UI
@@ -46,14 +46,14 @@ MeshBrowser Desktop App
 
 ### Why This Approach
 - **Don't reinvent web rendering** - Chromium handles HTML/CSS/JS perfectly
-- **Custom protocol support** - Native `reticulum://` URL handling
+- **Custom protocol support** - Native `rweb://` URL handling
 - **Mesh-aware UI** - Show network topology, encryption status
 - **Extensible** - Add new protocols without changing rendering engine
 
 ## Key Features
 
 ### Browser Interface
-- **Address bar**: `[reticulum://destination/path] [Go]`
+- **Address bar**: `[rweb://destination/path] [Go]`
 - **Status indicators**: Connection hops, encryption, network type
 - **Discovery panel**: List of available servers on network
 - **Protocol switching**: Future support for multiple decentralized protocols
@@ -81,9 +81,9 @@ MeshBrowser Desktop App
 
 ### Protocol Handler Architecture
 ```javascript
-// Electron main process - register reticulum:// as privileged scheme
+// Electron main process - register rweb:// as privileged scheme
 protocol.registerSchemesAsPrivileged([{
-  scheme: 'reticulum',
+  scheme: 'rweb',
   privileges: {
     supportFetchAPI: true,
     corsEnabled: true,
@@ -93,57 +93,58 @@ protocol.registerSchemesAsPrivileged([{
   }
 }]);
 
-// Stream protocol handler - intercepts reticulum:// URLs
-protocol.registerStreamProtocol('reticulum', async (request, callback) => {
-  const url = request.url.substring(12) // Remove 'reticulum://'
-  const response = await reticulumManager.sendCommand('fetch-page', { url })
-  const content = Buffer.from(response.content, 'base64')
+// Stream protocol handler - intercepts rweb:// URLs
+protocol.handle('rweb', async (request) => {
+  const url = request.url.substring(7) // Remove 'rweb://'
+  const response = await fetch(`http://localhost:${httpPort}/proxy/reticulum`, {
+    method: 'POST',
+    body: JSON.stringify({ url, method: 'GET' })
+  })
 
-  callback({
-    statusCode: response.status_code || 200,
-    headers: { 'Content-Type': response.content_type || 'text/html' },
-    data: stream
+  return new Response(content, {
+    status: response.status,
+    headers: { 'Content-Type': response.headers.get('content-type') }
   })
 });
 ```
 
 ### Python Backend Architecture
 ```python
-# Hybrid Architecture: HTTP for data flow, stdio for process control
+# Hybrid Architecture: HTTP for data flow, stdio for process lifecycle
 
 # Main entry point
 main.py -> HTTP Server + Console Manager
 
-# HTTP Data Layer (Parallel Processing)
+# HTTP Data Layer (All Data Requests)
 class HTTP_API_Server:
     def start():                    # Start ThreadingHTTPServer
     def stop():                     # Shutdown server
 
 class HTTP_API_Handler:
+    def do_GET():                   # Handle GET /api/status
     def do_POST():                  # Handle POST /proxy/reticulum
+    def _handle_status_request():   # Return Reticulum network status
     def _handle_reticulum_proxy():  # Process Reticulum requests
     def _send_reticulum_response(): # Native HTTP responses
 
-# Console Communication Layer (Process Lifecycle)
+# Console Communication Layer (Process Lifecycle Only)
 class ConsoleManager:
-    def run():                    # Main stdin/stdout lifecycle loop
-    def _wait_for_command():      # Wait for shutdown commands
-    def _process_shutdown():      # Handle graceful shutdown
+    def run():                    # Send STARTUP, wait for EOF (process termination)
     def messenger:                # ConsoleMessageSender for structured logging
 
 class ConsoleMessageSender:
-    def send_message():           # Framed JSON messaging (ERROR:, WARNING:, etc.)
-    def send_error/warning():     # Structured log messages
+    def send_message():           # Framed JSON messaging (STARTUP, ERROR, etc.)
+    def send_error/warning():     # Structured log messages to stdout
 
 # Reticulum Modules (Clean separation of concerns)
 src/python/
 ├── main.py                      # Entry point, starts HTTP + Console
-├── console/                     # Process communication utilities
-│   ├── manager.py              # ConsoleManager: process lifecycle
+├── console/                     # Process lifecycle utilities
+│   ├── manager.py              # ConsoleManager: STARTUP signal, wait for EOF
 │   └── message_sender.py       # ConsoleMessageSender: structured messaging
 ├── http_api/                    # HTTP server package
 │   ├── server.py               # HTTP_API_Server: ThreadingHTTPServer wrapper
-│   └── handler.py              # HTTP_API_Handler: /proxy/reticulum endpoint
+│   └── handler.py              # HTTP_API_Handler: endpoints for data requests
 └── reticulum/                   # Reticulum networking (6 focused modules)
     ├── client.py               # ReticulumClient: thin coordinator (~47 lines)
     ├── url.py                  # parse_url(): URL parsing/validation (~58 lines)
@@ -151,13 +152,17 @@ src/python/
     ├── fetch.py                # fetch(): HTTP-like protocol over RNS (~52 lines)
     ├── response.py             # parse_response(): HTTP response parsing (~67 lines)
     └── status.py               # get_status(): network status info (~30 lines)
+
+# HTTP API Endpoints
+GET  /api/status          # Returns Reticulum network status (replaces IPC)
+POST /proxy/reticulum     # Proxy requests to Reticulum network
 ```
 
 ## Development Phases
 
 ### Phase 1: Core Browser ✅ COMPLETED
 - ✅ **Modern Electron architecture** with protocol handlers
-- ✅ **Native protocol support** - `reticulum://` and `about://` work like web protocols
+- ✅ **Native protocol support** - `rweb://` and `about://` work like web protocols
 - ✅ **Clean Reticulum backend** - Organized in `src/reticulum/` with handler pattern
 - ✅ **Minimal renderer** - Just navigation logic, protocol handlers do heavy lifting
 - ✅ **Zero unnecessary IPC** - Direct protocol handling eliminates complexity
@@ -193,7 +198,7 @@ src/python/
 ### Talk Demo Flow
 1. **Launch MeshBrowser** - Shows clean, familiar interface
 2. **Discovery panel** - Shows available RServers on network
-3. **Browse to server** - Enter reticulum:// URL or click discovered server
+3. **Browse to server** - Enter rweb:// URL or click discovered server
 4. **Page loads** - HTML/CSS renders normally in embedded browser
 5. **Show network status** - Display mesh routing, encryption indicators
 6. **Multi-hop demo** - Browse server on different network segment
@@ -208,7 +213,7 @@ src/python/
 
 MeshBrowser positions itself as **the browser for decentralized protocols**:
 - Chrome/Firefox for HTTP/HTTPS
-- **MeshBrowser for reticulum://, ipfs://, hyper://**
+- **MeshBrowser for rweb://, ipfs://, hyper://**
 
 This creates a new product category and establishes first-mover advantage in the growing decentralized web space.
 
@@ -271,34 +276,41 @@ The application automatically starts a Python backend process when launched. The
 - **Main Process** (`src/main.js`) - App lifecycle, protocol registration
 - **Protocol Handlers** (`src/protocol-handlers/`) - Native protocol implementations
 - **Renderer Process** (`src/renderer/`) - Minimal browser UI
-- **Reticulum Backend** (`src/reticulum/`) - All networking logic
-- **Process Management** (`src/process-manager/`) - Backend lifecycle utilities
+- **Reticulum Backend** (`src/python/`) - All networking logic
+- **HTTP Process Management** (`src/http-process/`) - HTTP subprocess lifecycle utilities
 
 ### Current File Structure
 ```
 src/
 ├── main.js                           # App entry, protocol registration, backend startup
 ├── protocol-handlers/                # Protocol implementations
-│   ├── protocol-schemes.js          # Single scheme registration (reticulum + about)
-│   ├── reticulum-handler.js          # Handles reticulum:// URLs
-│   └── about-handler.js              # Handles about:// URLs (system, status)
+│   ├── protocol-schemes.js          # Single scheme registration (rweb + about)
+│   ├── rweb-handler.js              # Handles rweb:// URLs via HTTP
+│   └── about-handler.js             # Handles about:// URLs via HTTP
 ├── renderer/                         # Minimal browser UI
 │   ├── index.html                    # Browser interface (address bar + webview)
 │   └── app.js                        # Navigation logic only
 ├── process-managers.js               # Backend process management
-├── process-manager/                  # Process utilities
-│   ├── manager.js                    # Process lifecycle
-│   ├── message-handler.js            # IPC communication
-│   └── [utils...]                    # Supporting utilities
-└── reticulum/                        # Pure Reticulum backend
+├── http-process/                     # HTTP process management utilities
+│   ├── manager.js                   # HttpProcessManager: lifecycle & port tracking
+│   ├── message-handler.js            # Lifecycle-only monitoring (STARTUP, ERROR, etc.)
+│   ├── starter.js                    # Process startup with lifecycle frame parsing
+│   └── stopper.js                    # Process shutdown
+└── python/                           # Python backend (HTTP + lifecycle)
     ├── main.py                       # Backend entry point
-    ├── console_server.py             # IPC server (stdin/stdout/stderr)
-    ├── command_router.py             # Command routing
-    └── handler/                      # Protocol implementation
-        ├── handler.py                # Command handlers (fetch-page, reticulum-status)
-        ├── client.py                 # Reticulum networking coordinator
-        ├── page_fetcher.py           # Content retrieval with base64 encoding
-        └── status_fetcher.py         # Network + system status
+    ├── console/                      # Process lifecycle management
+    │   ├── manager.py               # ConsoleManager: STARTUP signal, wait for EOF
+    │   └── message_sender.py        # ConsoleMessageSender: structured logging
+    ├── http_api/                     # HTTP server for all data requests
+    │   ├── server.py                # HTTP_API_Server: ThreadingHTTPServer
+    │   └── handler.py               # HTTP_API_Handler: GET /api/status, POST /proxy/reticulum
+    └── reticulum/                    # Reticulum networking (6 focused modules)
+        ├── client.py                # ReticulumClient: thin coordinator
+        ├── url.py                   # parse_url(): URL parsing/validation
+        ├── link.py                  # establish_link(): RNS link management
+        ├── fetch.py                 # fetch(): HTTP-like protocol over RNS
+        ├── response.py              # parse_response(): HTTP response parsing
+        └── status.py                # get_status(): network status info
 ```
 
 ### Modern Browser Integration
@@ -309,13 +321,13 @@ Protocol handlers provide seamless web-like browsing:
 browserView.src = url  // That's it!
 
 // Protocol handlers automatically:
-// reticulum://hash/path → reticulumHandler fetches from network
+// rweb://hash/path     → rwebHandler fetches from network
 // about:system         → aboutHandler generates system info
 // about:reticulum      → aboutHandler generates network status
 
 // All embedded resources work automatically:
-// <img src="logo.png"> → reticulum://abc123def456.../logo.png
-// <link href="style.css"> → reticulum://abc123def456.../style.css
+// <img src="logo.png"> → rweb://abc123def456.../logo.png
+// <link href="style.css"> → rweb://abc123def456.../style.css
 ```
 
 ### Zero Manual IPC Needed
@@ -358,18 +370,26 @@ browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
   - Shared client passed to all HTTP handler threads via factory pattern
   - Prevents "signal only works in main thread" and "reinitialise Reticulum" errors
   - Follows Reticulum best practice: one instance per program
+- ✅ **Process Manager Simplification** - Removed stdin/stdout data flow complexity
+  - Deleted `pending-requests.js` and `utils.js` (no longer needed)
+  - Simplified `message-handler.js` to lifecycle-only monitoring (STARTUP, ERROR, WARNING, etc.)
+  - Removed `sendCommand()` method - all data requests now use HTTP
+  - Added `GET /api/status` endpoint to Python backend
+  - Migrated `about-handler.js` to use HTTP instead of IPC
+  - Removed unused IPC handlers from `ipc-handlers.js`
+  - Net reduction: ~200 LOC while improving architecture clarity
 
 **Current State:**
-MeshBrowser now has a **hybrid parallel architecture** with **professional UI** and **full protocol support**! The app features:
-- **HTTP data flow** - Parallel requests via ThreadingHTTPServer for web-like performance
-- **stdio process control** - Robust lifecycle management and structured logging
-- **Clean backend structure** - All Reticulum code in `src/reticulum/`
+MeshBrowser now has a **clean HTTP-only architecture** with **professional UI** and **full protocol support**! The app features:
+- **Single data flow: HTTP only** - All data requests use HTTP API endpoints
+- **stdio lifecycle control** - Process startup, shutdown, and error monitoring
+- **Clean backend structure** - All Python code organized in modular packages
 - **Modern UI** - Semantic HTML, CSS custom properties, dark mode support, Font Awesome icons
 - **Modular JavaScript** - ES6 modules with clean separation of concerns
 - **Protocol-agnostic browsing** - Works with any URL protocol (HTTP, HTTPS, mesh protocols)
 - **Professional styling** - Clean navigation, status indicators, responsive design
 - **Full binary support** - Images, large files, and all content types work correctly
-- **Robust message handling** - Proper buffering and parsing for any size content
+- **Simplified process manager** - ~200 LOC removed, lifecycle-only monitoring
 
 ## **Next Priority Tasks**
 

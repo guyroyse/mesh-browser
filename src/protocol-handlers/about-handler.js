@@ -1,5 +1,28 @@
 const { protocol } = require('electron')
-const { reticulumManager } = require('../process-managers')
+const { pythonManager } = require('../process-managers')
+
+// Fetch status from Python backend via HTTP
+async function fetchStatus() {
+  const httpPort = pythonManager.getHttpPort()
+  if (!httpPort) {
+    throw new Error('HTTP server not ready')
+  }
+
+  const response = await fetch(`http://localhost:${httpPort}/api/status`)
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`
+    try {
+      const errorData = await response.json()
+      errorMessage = errorData.error || errorMessage
+    } catch (e) {
+      errorMessage = response.statusText || errorMessage
+    }
+    throw new Error(errorMessage)
+  }
+
+  return await response.json()
+}
 
 // Setup the about protocol handler implementation (call after app is ready)
 function setupAboutHandler() {
@@ -102,7 +125,7 @@ async function generateAboutPage(pageType) {
 // Generate system information page
 async function generateSystemPage(styles) {
   try {
-    const data = await reticulumManager.sendCommand('reticulum-status')
+    const data = await fetchStatus()
 
     return `
       <!DOCTYPE html>
@@ -149,7 +172,7 @@ async function generateSystemPage(styles) {
 // Generate Reticulum status page
 async function generateReticulumPage(styles) {
   try {
-    const data = await reticulumManager.sendCommand('reticulum-status')
+    const data = await fetchStatus()
 
     const statusIndicator = data.initialized ? 'connected' : 'disconnected'
     const statusText = data.initialized ? 'Initialized' : 'Not initialized'

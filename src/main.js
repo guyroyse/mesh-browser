@@ -1,7 +1,7 @@
 const path = require('path')
 
 const { app, BrowserWindow, WebContentsView, nativeTheme } = require('electron')
-const { reticulumManager } = require('./process-managers')
+const { pythonManager } = require('./process-managers')
 const { registerProtocolSchemes, setupProtocolHandlers } = require('./protocol-handlers/protocol-schemes')
 const { setupIpcHandlers } = require('./ipc-handlers')
 
@@ -38,7 +38,7 @@ async function handleBeforeQuit() {
 
 async function startReticulumBackend() {
   try {
-    await reticulumManager.start()
+    await pythonManager.start()
     console.log('Reticulum backend started successfully')
   } catch (error) {
     console.error('Failed to start Reticulum backend:', error)
@@ -47,7 +47,7 @@ async function startReticulumBackend() {
 
 async function stopReticulumBackend() {
   try {
-    await reticulumManager.stop()
+    await pythonManager.stop()
     console.log('Reticulum backend stopped successfully')
   } catch (error) {
     console.error('Failed to stop Reticulum backend:', error)
@@ -97,6 +97,9 @@ async function createWindow() {
   mainWindow.contentView.addChildView(webContentsView)
   mainWindow.contentView.addChildView(statusView)
 
+  // Set up IPC handlers BEFORE loading view content
+  setupIpcHandlers(mainWindow, navigationView, statusView, webContentsView)
+
   // Load content for each view
   await navigationView.webContents.loadFile(path.join(__dirname, 'views', 'navigation', 'index.html'))
   await statusView.webContents.loadFile(path.join(__dirname, 'views', 'status', 'index.html'))
@@ -113,8 +116,6 @@ async function createWindow() {
 
   // Show the window
   mainWindow.show()
-
-  setupIpcHandlers(mainWindow, navigationView, statusView, webContentsView)
 }
 
 function positionViews() {
