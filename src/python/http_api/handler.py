@@ -19,8 +19,9 @@ import reticulum as Reticulum
 class HTTP_API_Handler(BaseHTTPRequestHandler):
     """HTTP request handler for Reticulum proxy requests"""
 
-    def __init__(self, *args, **kwargs):
-        self.reticulum_client = Reticulum.Client()
+    def __init__(self, reticulum_client, *args, **kwargs):
+        # Use shared ReticulumClient instance (created in main thread)
+        self.reticulum_client = reticulum_client
         super().__init__(*args, **kwargs)
 
     def do_POST(self):

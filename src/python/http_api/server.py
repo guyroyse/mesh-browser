@@ -17,8 +17,9 @@ from .handler import HTTP_API_Handler
 class HTTP_API_Server:
     """HTTP server that handles Reticulum proxy requests"""
 
-    def __init__(self):
+    def __init__(self, reticulum_client):
         self.messenger = Console.MessageSender()
+        self.reticulum_client = reticulum_client
         self.server = None
         self.server_thread = None
         self.port = None
@@ -28,8 +29,12 @@ class HTTP_API_Server:
         # Find available port
         self.port = self._find_available_port()
 
-        # Create server with HTTP handler
-        self.server = ThreadingHTTPServer(('localhost', self.port), HTTP_API_Handler)
+        # Create handler factory that passes shared client to each handler instance
+        def handler_factory(*args, **kwargs):
+            return HTTP_API_Handler(self.reticulum_client, *args, **kwargs)
+
+        # Create server with HTTP handler factory
+        self.server = ThreadingHTTPServer(('localhost', self.port), handler_factory)
 
         # Start server in background thread
         self.server_thread = Thread(target=self.server.serve_forever, daemon=True)

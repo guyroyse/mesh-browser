@@ -10,6 +10,7 @@ import sys
 
 import console as Console
 import http_api as HTTP
+import reticulum as Reticulum
 
 
 def main():
@@ -18,8 +19,15 @@ def main():
     # Initialize structured messaging
     messenger = Console.MessageSender()
 
-    # Start the HTTP server
-    http_server = HTTP.Server()
+    # Create shared ReticulumClient instance in main thread (required for signal handlers)
+    try:
+        reticulum_client = Reticulum.Client()
+    except Exception as e:
+        messenger.send_error(f"Failed to initialize Reticulum client: {e}")
+        return
+
+    # Start the HTTP server with shared client
+    http_server = HTTP.Server(reticulum_client)
     try:
         http_server.start()
     except Exception as e:

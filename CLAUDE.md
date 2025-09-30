@@ -353,6 +353,11 @@ browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
   - URL validation enforces 16-byte Reticulum hash length
   - All timeouts as module-level constants
   - Net reduction: 107 lines while adding better structure
+- ✅ **Threading Issue Fixed** - Shared ReticulumClient pattern eliminates signal handler errors
+  - Single `RNS.Reticulum()` instance created in main thread
+  - Shared client passed to all HTTP handler threads via factory pattern
+  - Prevents "signal only works in main thread" and "reinitialise Reticulum" errors
+  - Follows Reticulum best practice: one instance per program
 
 **Current State:**
 MeshBrowser now has a **hybrid parallel architecture** with **professional UI** and **full protocol support**! The app features:
@@ -366,34 +371,7 @@ MeshBrowser now has a **hybrid parallel architecture** with **professional UI** 
 - **Full binary support** - Images, large files, and all content types work correctly
 - **Robust message handling** - Proper buffering and parsing for any size content
 
-## **Current Issue: RNS Threading Error**
-
-**Problem:** `RNS.Reticulum()` raises `ValueError: signal only works in main thread` when instantiated in HTTP handler threads.
-
-**Error Details:**
-```python
-File "src/python/http_api/handler.py", line 23, in __init__
-    self.reticulum_client = Reticulum.Client()
-File "src/python/reticulum/client.py", line 23, in __init__
-    self.reticulum = RNS.Reticulum()
-ValueError: signal only works in main thread of the main interpreter
-```
-
-**Root Cause:**
-- `ThreadingHTTPServer` creates new thread for each request
-- Each HTTP request handler creates new `ReticulumClient()` in `__init__`
-- `RNS.Reticulum()` tries to register SIGINT handler in non-main thread
-- After first request succeeds, subsequent requests fail with "Attempt to reinitialise Reticulum"
-
-**Solution Needed:**
-- Create single shared `ReticulumClient` instance in main thread
-- Pass or share this instance with HTTP handler threads
-- Avoid creating new `RNS.Reticulum()` instances per request
-
 ## **Next Priority Tasks**
-
-### **Immediate: Fix Threading Issue**
-- ⏳ **Fix RNS threading error** - Create shared ReticulumClient instance in main thread
 
 ### **Phase 2: Enhanced Features**
 - **Server discovery UI** - Panel showing available RServers on the network
