@@ -11,10 +11,10 @@ from http.server import ThreadingHTTPServer
 from threading import Thread
 
 import console as Console
-from .handler import MeshBrowserHTTPHandler
+from .handler import HTTP_API_Handler
 
 
-class MeshBrowserHTTPServer:
+class HTTP_API_Server:
     """HTTP server that handles Reticulum proxy requests"""
 
     def __init__(self):
@@ -29,7 +29,7 @@ class MeshBrowserHTTPServer:
         self.port = self._find_available_port()
 
         # Create server with HTTP handler
-        self.server = ThreadingHTTPServer(('localhost', self.port), MeshBrowserHTTPHandler)
+        self.server = ThreadingHTTPServer(('localhost', self.port), HTTP_API_Handler)
 
         # Start server in background thread
         self.server_thread = Thread(target=self.server.serve_forever, daemon=True)

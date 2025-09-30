@@ -3,6 +3,8 @@ const FRAME_TYPES = [
   'MESHBROWSER_MSG',
   'STARTUP',
   'SHUTDOWN',
+  'HTTP_STARTUP',
+  'HTTP_SHUTDOWN',
   'ERROR',
   'WARNING',
   'INFO',

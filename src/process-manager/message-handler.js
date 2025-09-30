@@ -110,6 +110,15 @@ class MessageHandler extends EventEmitter {
       return
     }
 
+    // Handle system frames (HTTP_STARTUP, STARTUP, etc.)
+    if (frame === 'HTTP_STARTUP' || frame === 'STARTUP' || frame === 'HTTP_SHUTDOWN') {
+      console.log(`Process system message:`, message)
+      console.log(`MessageHandler: Emitting event '${frame}' with data:`, message)
+      this.emit(frame, message)
+      console.log(`MessageHandler: Event '${frame}' emitted, listener count:`, this.listenerCount(frame))
+      return
+    }
+
     // Handle special message types (like server startup notifications)
     if (message.type) {
       this.emit(message.type, message)

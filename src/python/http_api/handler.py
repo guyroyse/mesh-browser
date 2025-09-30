@@ -12,14 +12,15 @@ import sys
 from http.server import BaseHTTPRequestHandler
 from typing import Dict, Any
 
-from ..reticulum.handler.handler import ReticulumHandler
+import reticulum as Reticulum
 
 
-class MeshBrowserHTTPHandler(BaseHTTPRequestHandler):
+
+class HTTP_API_Handler(BaseHTTPRequestHandler):
     """HTTP request handler for Reticulum proxy requests"""
 
     def __init__(self, *args, **kwargs):
-        self.reticulum_handler = ReticulumHandler()
+        self.reticulum_client = Reticulum.Client()
         super().__init__(*args, **kwargs)
 
     def do_POST(self):
@@ -62,8 +63,8 @@ class MeshBrowserHTTPHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            # Call Reticulum handler directly
-            result = self.reticulum_handler.client.fetch_page(url)
+            # Call Reticulum client directly
+            result = self.reticulum_client.fetch_page(url)
             self._send_reticulum_response(result)
         except (RuntimeError, ValueError, ConnectionError, TimeoutError) as e:
             self._send_error(500, str(e))

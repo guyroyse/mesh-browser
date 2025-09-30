@@ -9,7 +9,7 @@ import json
 import sys
 
 import console as Console
-import http as HTTP
+import http_api as HTTP
 
 
 def main():
