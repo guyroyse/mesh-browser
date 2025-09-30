@@ -115,9 +115,13 @@ protocol.registerStreamProtocol('reticulum', async (request, callback) => {
 main.py -> HTTP Server + Console Manager
 
 # HTTP Data Layer (Parallel Processing)
-class MeshBrowserHTTPServer:
-    def start():                  # Start ThreadingHTTPServer
-    def _handle_reticulum_proxy(): # Handle /proxy/reticulum requests
+class HTTP_API_Server:
+    def start():                    # Start ThreadingHTTPServer
+    def stop():                     # Shutdown server
+
+class HTTP_API_Handler:
+    def do_POST():                  # Handle POST /proxy/reticulum
+    def _handle_reticulum_proxy():  # Process Reticulum requests
     def _send_reticulum_response(): # Native HTTP responses
 
 # Console Communication Layer (Process Lifecycle)
@@ -131,19 +135,22 @@ class ConsoleMessageSender:
     def send_message():           # Framed JSON messaging (ERROR:, WARNING:, etc.)
     def send_error/warning():     # Structured log messages
 
-# Protocol Modules (Extensible)
+# Reticulum Modules (Clean separation of concerns)
 src/python/
 ├── main.py                      # Entry point, starts HTTP + Console
 ├── console/                     # Process communication utilities
 │   ├── manager.py              # ConsoleManager: process lifecycle
 │   └── message_sender.py       # ConsoleMessageSender: structured messaging
-├── command_router.py           # CommandRouter: used by HTTP server
-├── http_server.py              # MeshBrowserHTTPServer: /proxy/* endpoints
-└── reticulum/
-    ├── handler.py              # ReticulumHandler: fetch-page, status
-    ├── client.py               # ReticulumClient: networking coordinator
-    ├── page_fetcher.py         # PageFetcher: content retrieval
-    └── status_fetcher.py       # StatusFetcher: network information
+├── http_api/                    # HTTP server package
+│   ├── server.py               # HTTP_API_Server: ThreadingHTTPServer wrapper
+│   └── handler.py              # HTTP_API_Handler: /proxy/reticulum endpoint
+└── reticulum/                   # Reticulum networking (6 focused modules)
+    ├── client.py               # ReticulumClient: thin coordinator (~47 lines)
+    ├── url.py                  # parse_url(): URL parsing/validation (~58 lines)
+    ├── link.py                 # establish_link(): RNS link management (~86 lines)
+    ├── fetch.py                # fetch(): HTTP-like protocol over RNS (~52 lines)
+    ├── response.py             # parse_response(): HTTP response parsing (~67 lines)
+    └── status.py               # get_status(): network status info (~30 lines)
 ```
 
 ## Development Phases
@@ -338,6 +345,14 @@ browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
 - ✅ **Protocol-Agnostic Browser** - Handles any URL protocol, not just mesh protocols
 - ✅ **Large File Support** - Fixed JSON message buffering for large content transmission
 - ✅ **Binary Content Handling** - Proper HTTP header separation for images and binary files
+- ✅ **Reticulum Module Refactor** - Clean separation into 6 focused modules with single responsibilities
+  - Removed unused `self.identity` (not needed for outbound client connections)
+  - Replaced blocking `time.sleep()` with `threading.Event` for efficient waiting
+  - Client controls link lifecycle (establish, use, teardown)
+  - Configurable destinations via `establish_link(hash, app, *aspects)`
+  - URL validation enforces 16-byte Reticulum hash length
+  - All timeouts as module-level constants
+  - Net reduction: 107 lines while adding better structure
 
 **Current State:**
 MeshBrowser now has a **hybrid parallel architecture** with **professional UI** and **full protocol support**! The app features:
@@ -351,7 +366,34 @@ MeshBrowser now has a **hybrid parallel architecture** with **professional UI** 
 - **Full binary support** - Images, large files, and all content types work correctly
 - **Robust message handling** - Proper buffering and parsing for any size content
 
+## **Current Issue: RNS Threading Error**
+
+**Problem:** `RNS.Reticulum()` raises `ValueError: signal only works in main thread` when instantiated in HTTP handler threads.
+
+**Error Details:**
+```python
+File "src/python/http_api/handler.py", line 23, in __init__
+    self.reticulum_client = Reticulum.Client()
+File "src/python/reticulum/client.py", line 23, in __init__
+    self.reticulum = RNS.Reticulum()
+ValueError: signal only works in main thread of the main interpreter
+```
+
+**Root Cause:**
+- `ThreadingHTTPServer` creates new thread for each request
+- Each HTTP request handler creates new `ReticulumClient()` in `__init__`
+- `RNS.Reticulum()` tries to register SIGINT handler in non-main thread
+- After first request succeeds, subsequent requests fail with "Attempt to reinitialise Reticulum"
+
+**Solution Needed:**
+- Create single shared `ReticulumClient` instance in main thread
+- Pass or share this instance with HTTP handler threads
+- Avoid creating new `RNS.Reticulum()` instances per request
+
 ## **Next Priority Tasks**
+
+### **Immediate: Fix Threading Issue**
+- ⏳ **Fix RNS threading error** - Create shared ReticulumClient instance in main thread
 
 ### **Phase 2: Enhanced Features**
 - **Server discovery UI** - Panel showing available RServers on the network
