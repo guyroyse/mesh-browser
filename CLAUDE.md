@@ -162,12 +162,11 @@ POST /proxy/reticulum     # Proxy requests to Reticulum network
 
 ### Phase 1: Core Browser ✅ COMPLETED
 - ✅ **Modern Electron architecture** with protocol handlers
-- ✅ **Native protocol support** - `rweb://` and `about://` work like web protocols
+- ✅ **Native protocol support** - `rweb://` protocol works like web protocols
 - ✅ **Clean Reticulum backend** - Organized in `src/reticulum/` with handler pattern
 - ✅ **Minimal renderer** - Just navigation logic, protocol handlers do heavy lifting
 - ✅ **Zero unnecessary IPC** - Direct protocol handling eliminates complexity
 - ✅ **Full web compatibility** - JavaScript, CSS, images, embedded resources all work
-- ✅ **System diagnostics** - `about:system` and `about:reticulum` pages
 - ✅ **Modern Electron APIs** - Using `protocol.handle()` instead of deprecated methods
 - ✅ **Automatic resource loading** - Relative URLs, embedded links work seamlessly
 - ✅ **Binary content support** - All content types via base64 encoding
@@ -179,7 +178,7 @@ POST /proxy/reticulum     # Proxy requests to Reticulum network
 - ✅ **Webview integration** - Fixed webview configuration for protocol handler support
 - ✅ **Protocol handler debugging** - Fixed IPC communication and large file handling
 - ✅ **Binary content support** - Images and large files now load correctly
-- ⏳ Server discovery and connection UI
+- ✅ **Protocol handler refactoring** - Closure patterns, consistent error handling, dedent templates
 
 ### Phase 2: Enhanced UX  
 - Network topology visualization
@@ -284,12 +283,21 @@ The application automatically starts a Python backend process when launched. The
 src/
 ├── main.js                           # App entry, protocol registration, backend startup
 ├── protocol-handlers/                # Protocol implementations
-│   ├── protocol-schemes.js          # Single scheme registration (rweb + about)
-│   ├── rweb-handler.js              # Handles rweb:// URLs via HTTP
-│   └── about-handler.js             # Handles about:// URLs via HTTP
-├── renderer/                         # Minimal browser UI
-│   ├── index.html                    # Browser interface (address bar + webview)
-│   └── app.js                        # Navigation logic only
+│   ├── protocol-schemes.js          # Single scheme registration (rweb)
+│   └── rweb-handler.js              # Handles rweb:// URLs via HTTP
+├── views/                            # Browser UI components
+│   ├── navigation/                  # Navigation bar view
+│   │   ├── index.html              # Address bar + nav buttons
+│   │   ├── navigation.css          # Navigation styling
+│   │   └── navigation.js           # Navigation logic
+│   ├── status/                      # Status bar view
+│   │   ├── index.html              # Status indicators
+│   │   ├── status.css              # Status styling
+│   │   └── status.js               # Status updates
+│   └── shared/                      # Shared resources
+│       ├── common.css              # Common styles
+│       ├── preload.js              # IPC bridge
+│       └── assets/                 # Icons, fonts
 ├── process-managers.js               # Backend process management
 ├── http-process/                     # HTTP process management utilities
 │   ├── manager.js                   # HttpProcessManager: lifecycle & port tracking
@@ -317,28 +325,28 @@ src/
 Protocol handlers provide seamless web-like browsing:
 
 ```javascript
-// User navigates to any URL
-browserView.src = url  // That's it!
+// User navigates to rweb:// URL
+webContentsView.loadURL(url)  // That's it!
 
-// Protocol handlers automatically:
-// rweb://hash/path     → rwebHandler fetches from network
-// about:system         → aboutHandler generates system info
-// about:reticulum      → aboutHandler generates network status
+// Protocol handler automatically:
+// rweb://hash/path → rwebHandler fetches from network via HTTP backend
 
 // All embedded resources work automatically:
 // <img src="logo.png"> → rweb://abc123def456.../logo.png
 // <link href="style.css"> → rweb://abc123def456.../style.css
 ```
 
-### Zero Manual IPC Needed
-Protocol handlers eliminate the need for renderer IPC:
+### Multi-View Architecture
+MeshBrowser uses Electron's WebContentsView for a clean separation:
 
 ```javascript
-// OLD: Manual IPC calls from renderer
-window.meshBrowserAPI.reticulumStatus()  // ❌ No longer needed
+// Three separate views compose the browser:
+navigationView   // Top: Address bar + navigation buttons
+webContentsView  // Middle: Actual web content (rweb:// pages)
+statusView       // Bottom: Status indicators and info
 
-// NEW: Automatic protocol handling
-browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
+// Communication via IPC between views
+// Protocol handling happens transparently in main process
 ```
 
 **Recent Major Progress (Latest Sessions):**
@@ -375,7 +383,6 @@ browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
   - Simplified `message-handler.js` to lifecycle-only monitoring (STARTUP, ERROR, WARNING, etc.)
   - Removed `sendCommand()` method - all data requests now use HTTP
   - Added `GET /api/status` endpoint to Python backend
-  - Migrated `about-handler.js` to use HTTP instead of IPC
   - Removed unused IPC handlers from `ipc-handlers.js`
   - Net reduction: ~200 LOC while improving architecture clarity
 - ✅ **rweb-handler Refactoring** - Simplified protocol handler with closure pattern
@@ -391,18 +398,22 @@ browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
   - Reticulum errors (404, 500, etc.) → pass through actual server response
   - Python backend now extracts real HTTP status codes from Reticulum responses
   - Prevents treating all errors as backend errors, allows proper 404 pages
+- ✅ **Protocol Handler Cleanup** - Removed about:// protocol support
+  - Simplified to single rweb:// protocol (core functionality)
+  - Removed about-handler.js and about:// scheme registration
+  - Updated address bar placeholder to reflect available protocols
+  - Cleaner, more focused codebase
 
 **Current State:**
-MeshBrowser now has a **clean HTTP-only architecture** with **professional UI** and **full protocol support**! The app features:
+MeshBrowser now has a **clean HTTP-only architecture** with **professional UI** and **focused protocol support**! The app features:
 - **Single data flow: HTTP only** - All data requests use HTTP API endpoints
 - **stdio lifecycle control** - Process startup, shutdown, and error monitoring
 - **Clean backend structure** - All Python code organized in modular packages
-- **Modern UI** - Semantic HTML, CSS custom properties, dark mode support, Font Awesome icons
-- **Modular JavaScript** - ES6 modules with clean separation of concerns
-- **Protocol-agnostic browsing** - Works with any URL protocol (HTTP, HTTPS, mesh protocols)
-- **Professional styling** - Clean navigation, status indicators, responsive design
+- **Modern multi-view UI** - Navigation, content, and status views with IPC communication
+- **Professional styling** - Clean navigation, status indicators, responsive design, Font Awesome icons
+- **rweb:// protocol** - Native Reticulum network browsing with full web compatibility
 - **Full binary support** - Images, large files, and all content types work correctly
-- **Simplified process manager** - ~200 LOC removed, lifecycle-only monitoring
+- **Simplified architecture** - Focused on core functionality, ~230 LOC removed through refactoring
 
 ## **Next Priority Tasks**
 
