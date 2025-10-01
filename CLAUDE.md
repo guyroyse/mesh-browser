@@ -378,6 +378,19 @@ browserView.src = 'about:reticulum'      // ✅ Protocol handler does everything
   - Migrated `about-handler.js` to use HTTP instead of IPC
   - Removed unused IPC handlers from `ipc-handlers.js`
   - Net reduction: ~200 LOC while improving architecture clarity
+- ✅ **rweb-handler Refactoring** - Simplified protocol handler with closure pattern
+  - Removed unnecessary base64 encode/decode cycle between backend and handler
+  - Backend URL computed once at setup time, shared via closure
+  - All handler functions moved into setupRwebHandler() closure
+  - URL parsing uses built-in URL class instead of substring manipulation
+  - Cleaner error page template using dedent library
+  - Net reduction: ~30 LOC while improving readability
+- ✅ **Error Handling Architecture** - Proper distinction between backend and content errors
+  - Added `X-Backend-Error` header to distinguish Python errors from Reticulum responses
+  - Backend errors → custom MeshBrowser error page with helpful message
+  - Reticulum errors (404, 500, etc.) → pass through actual server response
+  - Python backend now extracts real HTTP status codes from Reticulum responses
+  - Prevents treating all errors as backend errors, allows proper 404 pages
 
 **Current State:**
 MeshBrowser now has a **clean HTTP-only architecture** with **professional UI** and **full protocol support**! The app features:

@@ -12,6 +12,7 @@
     "electron": "^38.1.0"
   },
   "dependencies": {
+    "dedent": "^1.7.0",
     "ulid": "^3.0.1"
   }
 }

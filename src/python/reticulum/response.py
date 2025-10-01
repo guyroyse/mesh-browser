@@ -29,6 +29,7 @@ def parse_response(content: bytes, path: str) -> Dict[str, Any]:
         try:
             # Decode headers as UTF-8 for parsing
             headers_str = headers_bytes.decode('utf-8')
+            status_code = _extract_status_code(headers_str)
             content_type = _extract_content_type(headers_str)
             if not content_type:
                 content_type = _guess_content_type(path)
@@ -37,7 +38,7 @@ def parse_response(content: bytes, path: str) -> Dict[str, Any]:
             return {
                 'content': base64.b64encode(body_bytes).decode('ascii'),
                 'content_type': content_type,
-                'status_code': 200,
+                'status_code': status_code,
                 'encoding': 'base64'
             }
         except UnicodeDecodeError:
@@ -52,6 +53,18 @@ def parse_response(content: bytes, path: str) -> Dict[str, Any]:
         'status_code': 200,
         'encoding': 'base64'
     }
+
+
+def _extract_status_code(headers_str: str) -> int:
+    """Extract status code from HTTP response (e.g., 'HTTP/1.1 200 OK' -> 200)"""
+    first_line = headers_str.split('\r\n')[0]
+    parts = first_line.split(' ', 2)
+    if len(parts) >= 2:
+        try:
+            return int(parts[1])
+        except ValueError:
+            pass
+    return 200  # Default to 200 if parsing fails
 
 
 def _extract_content_type(headers_str: str) -> str:
