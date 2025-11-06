@@ -10,7 +10,7 @@ import threading
 
 
 # Timeout
-RESPONSE_TIMEOUT = 10  # seconds
+RESPONSE_TIMEOUT = 300  # seconds
 
 
 def fetch(link, dest_hash: bytes, path: str) -> bytes:
