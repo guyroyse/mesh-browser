@@ -3,15 +3,15 @@ const { MessageHandler } = require('./message-handler')
 const { stopProcess } = require('./stopper')
 
 class HttpProcessManager {
-  #command
+  #commands
   #args
   #options
   #handler
   #process = null
   #httpPort = null
 
-  constructor(command, args, options = {}) {
-    this.#command = command
+  constructor(commands, args, options = {}) {
+    this.#commands = commands
     this.#args = args
     this.#options = options
     this.#handler = new MessageHandler()
@@ -23,7 +23,7 @@ class HttpProcessManager {
   }
 
   async start() {
-    const { process, httpPort } = await startProcess(this.#command, this.#args, this.#options)
+    const { process, httpPort } = await startProcess(this.#commands, this.#args, this.#options)
 
     if (httpPort) {
       this.#httpPort = httpPort

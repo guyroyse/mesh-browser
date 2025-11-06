@@ -3,7 +3,30 @@ const { spawn } = require('child_process')
 // Lifecycle frame types we care about during startup
 const STARTUP_FRAMES = ['STARTUP', 'HTTP_STARTUP', 'ERROR']
 
-async function startProcess(command, args, options = {}) {
+async function startProcess(commands, args, options = {}) {
+  let lastError = null
+
+  // Try each command until one works
+  for (const command of commands) {
+    try {
+      const result = await trySpawnProcess(command, args, options)
+      console.log(`Successfully started process with command: ${command}`)
+      return result
+    } catch (error) {
+      lastError = error
+      console.log(`Failed to start with '${command}': ${error.message}`)
+      // Continue to next command
+    }
+  }
+
+  // All commands failed
+  throw new Error(
+    `Failed to start process with any command. Tried: ${commands.join(', ')}. ` +
+    `Last error: ${lastError?.message}`
+  )
+}
+
+function trySpawnProcess(command, args, options) {
   return new Promise((resolve, reject) => {
     const process = spawnProcess(command, args, options)
     let httpPort = null
