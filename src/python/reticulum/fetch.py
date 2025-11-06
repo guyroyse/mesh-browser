@@ -27,15 +27,22 @@ def fetch(link, dest_hash: bytes, path: str) -> bytes:
     response_event = threading.Event()
     response_data = {'content': b'', 'error': None}
 
-    def packet_callback(message, packet):
+    def resource_concluded_callback(resource):
+        """Callback when resource transfer concludes"""
         try:
-            response_data['content'] = message
+            if resource.status == RNS.Resource.COMPLETE:
+                # Read the complete transferred data
+                response_data['content'] = resource.data.read()
+            else:
+                response_data['error'] = f'Resource transfer failed with status: {resource.status}'
         except Exception as e:
             response_data['error'] = str(e)
         finally:
             response_event.set()
 
-    link.set_packet_callback(packet_callback)
+    # Configure link to auto-accept incoming resources
+    link.set_resource_strategy(RNS.Link.ACCEPT_ALL)
+    link.set_resource_concluded_callback(resource_concluded_callback)
 
     # Send request using RNS.Packet
     request_bytes = request_data.encode('utf-8')
