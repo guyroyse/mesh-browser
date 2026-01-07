@@ -10,8 +10,8 @@ import time
 
 
 # Timeouts
-PATH_DISCOVERY_TIMEOUT = 10  # seconds
-LINK_ESTABLISHMENT_TIMEOUT = 10  # seconds
+PATH_DISCOVERY_TIMEOUT = 120  # seconds
+LINK_ESTABLISHMENT_TIMEOUT = 120  # seconds
 
 
 def establish_link(dest_hash: bytes, app: str, *aspects) -> RNS.Link:
