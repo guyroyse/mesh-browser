@@ -1,23 +1,24 @@
-const { startProcess } = require('./starter')
-const { MessageHandler } = require('./message-handler')
-const { stopProcess } = require('./stopper')
+import { ChildProcess, SpawnOptions } from 'child_process'
 
-class HttpProcessManager {
-  #commands
-  #args
-  #options
-  #handler
-  #process = null
-  #httpPort = null
+import { startProcess } from './starter'
+import { MessageHandler } from './message-handler'
+import { stopProcess } from './stopper'
 
-  constructor(commands, args, options = {}) {
+export class HttpProcessManager {
+  #commands: string[]
+  #args: string[]
+  #options: SpawnOptions
+  #handler: MessageHandler
+  #process: ChildProcess | null = null
+  #httpPort: number | null = null
+
+  constructor(commands: string[], args: string[], options: SpawnOptions = {}) {
     this.#commands = commands
     this.#args = args
     this.#options = options
     this.#handler = new MessageHandler()
 
-    // Listen for HTTP server ready event
-    this.#handler.on('HTTP_STARTUP', data => {
+    this.#handler.on('HTTP_STARTUP', (data: { port: number }) => {
       this.#httpPort = data.port
     })
   }
@@ -42,9 +43,7 @@ class HttpProcessManager {
     this.#httpPort = null
   }
 
-  getHttpPort() {
+  getHttpPort(): number | null {
     return this.#httpPort
   }
 }
-
-module.exports = { HttpProcessManager }

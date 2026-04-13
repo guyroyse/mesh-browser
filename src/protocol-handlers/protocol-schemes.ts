@@ -1,7 +1,8 @@
-const { protocol } = require('electron')
-const { setupRwebHandler } = require('./rweb-handler')
+import { protocol } from 'electron'
 
-function registerProtocolSchemes() {
+import { setupRwebHandler } from './rweb-handler'
+
+export function registerProtocolSchemes() {
   protocol.registerSchemesAsPrivileged([
     {
       scheme: 'rweb',
@@ -17,8 +18,6 @@ function registerProtocolSchemes() {
   ])
 }
 
-function setupProtocolHandlers() {
+export function setupProtocolHandlers() {
   setupRwebHandler()
 }
-
-module.exports = { registerProtocolSchemes, setupProtocolHandlers }

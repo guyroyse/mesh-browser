@@ -1,26 +1,26 @@
-const { protocol } = require('electron')
-const { pythonManager } = require('../process-managers')
-const dedent = require('dedent')
+import { protocol } from 'electron'
+import dedent from 'dedent'
 
-function setupRwebHandler() {
+import { pythonManager } from '@main/processes'
+
+export function setupRwebHandler() {
   const httpPort = pythonManager.getHttpPort()
   const backendUrl = `http://localhost:${httpPort}/proxy/reticulum`
 
   protocol.handle('rweb', handleRequest)
 
-  async function handleRequest(request) {
+  async function handleRequest(request: Request): Promise<Response> {
     console.log(`Protocol handler: Fetching ${request.url}`)
 
     try {
       const url = new URL(request.url)
       return await fetchFromBackend(url)
     } catch (error) {
-      return createErrorResponse(request, error)
+      return createErrorResponse(request, error as Error)
     }
   }
 
-  async function fetchFromBackend(url) {
-    // Forward the request to the Reticulum backend
+  async function fetchFromBackend(url: URL): Promise<Response> {
     const response = await fetch(backendUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -30,18 +30,16 @@ function setupRwebHandler() {
       })
     })
 
-    // If the backend indicates an error, generate an error page
     const isBackendError = response.headers.get('X-Backend-Error') === 'true'
     if (isBackendError) {
       const errorData = await response.json().catch(() => ({}))
       throw new Error(errorData.error ?? response.statusText ?? `HTTP ${response.status}`)
     }
 
-    // Return the HTTP Response directly
     return response
   }
 
-  function createErrorResponse(request, error) {
+  function createErrorResponse(request: Request, error: Error): Response {
     console.error('Protocol handler error:', error)
 
     return new Response(generateErrorPage(request.url, error.message), {
@@ -52,8 +50,7 @@ function setupRwebHandler() {
     })
   }
 
-  // Generate HTML error page
-  function generateErrorPage(url, errorMessage) {
+  function generateErrorPage(url: string, errorMessage: string): string {
     return dedent`
       <!DOCTYPE html>
       <html>
@@ -78,8 +75,7 @@ function setupRwebHandler() {
     `
   }
 
-  // Utility function to escape HTML for error pages
-  function escapeHtml(text) {
+  function escapeHtml(text: string): string {
     if (!text) return ''
     return text
       .replace(/&/g, '&amp;')
@@ -89,5 +85,3 @@ function setupRwebHandler() {
       .replace(/'/g, '&#39;')
   }
 }
-
-module.exports = { setupRwebHandler }

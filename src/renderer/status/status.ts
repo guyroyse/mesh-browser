@@ -1,17 +1,16 @@
 class StatusController {
+  private statusIcon: HTMLElement
+  private statusText: HTMLElement
+
   constructor() {
-    this.setupElements()
+    this.statusIcon = document.getElementById('status-icon') as HTMLElement
+    this.statusText = document.getElementById('status-text') as HTMLElement
+
     this.setupEventListeners()
   }
 
-  setupElements() {
-    this.statusIcon = document.getElementById('status-icon')
-    this.statusText = document.getElementById('status-text')
-  }
-
   setupEventListeners() {
-    // Listen for navigation updates from main process
-    window.browserAPI.onNavigationUpdate(data => {
+    window.browserAPI.onNavigationUpdate((data: { isLoading: boolean; error?: string }) => {
       if (data.isLoading) {
         this.setLoading('Loading...')
       } else if (data.error) {
@@ -21,8 +20,7 @@ class StatusController {
       }
     })
 
-    // Listen for URL changes
-    window.browserAPI.onUrlChanged(url => {
+    window.browserAPI.onUrlChanged((url: string) => {
       if (url) {
         this.setLoading(`Loading ${this.getDisplayUrl(url)}...`)
       }
@@ -44,11 +42,10 @@ class StatusController {
     this.statusText.textContent = message
   }
 
-  getDisplayUrl(url) {
+  getDisplayUrl(url: string): string {
     try {
       const urlObj = new URL(url)
       if (urlObj.protocol === 'reticulum:') {
-        // Show just the hash portion for reticulum URLs
         return urlObj.hostname || urlObj.pathname
       } else if (urlObj.protocol === 'about:') {
         return url
@@ -61,7 +58,6 @@ class StatusController {
   }
 }
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   new StatusController()
 })

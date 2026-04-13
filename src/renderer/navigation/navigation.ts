@@ -1,20 +1,22 @@
 class NavigationController {
+  private backButton: HTMLButtonElement
+  private forwardButton: HTMLButtonElement
+  private refreshButton: HTMLButtonElement
+  private addressBar: HTMLInputElement
+  private urlForm: HTMLFormElement
+
   constructor() {
-    this.setupElements()
+    this.backButton = document.getElementById('back-button') as HTMLButtonElement
+    this.forwardButton = document.getElementById('forward-button') as HTMLButtonElement
+    this.refreshButton = document.getElementById('refresh-button') as HTMLButtonElement
+    this.addressBar = document.getElementById('address-bar') as HTMLInputElement
+    this.urlForm = document.getElementById('url-form') as HTMLFormElement
+
     this.setupEventListeners()
     this.updateNavigationState()
   }
 
-  setupElements() {
-    this.backButton = document.getElementById('back-button')
-    this.forwardButton = document.getElementById('forward-button')
-    this.refreshButton = document.getElementById('refresh-button')
-    this.addressBar = document.getElementById('address-bar')
-    this.urlForm = document.getElementById('url-form')
-  }
-
   setupEventListeners() {
-    // Navigation buttons
     this.backButton.addEventListener('click', () => {
       window.browserAPI.goBack()
     })
@@ -27,8 +29,7 @@ class NavigationController {
       window.browserAPI.refresh()
     })
 
-    // URL form submission
-    this.urlForm.addEventListener('submit', (event) => {
+    this.urlForm.addEventListener('submit', event => {
       event.preventDefault()
       const url = this.addressBar.value.trim()
       if (url) {
@@ -36,26 +37,20 @@ class NavigationController {
       }
     })
 
-    // Listen for URL changes from main process
-    window.browserAPI.onUrlChanged(url => {
+    window.browserAPI.onUrlChanged((url: string) => {
       this.addressBar.value = url
     })
 
-    // Listen for navigation state updates
-    window.browserAPI.onNavigationUpdate(data => {
+    window.browserAPI.onNavigationUpdate((data: { canGoBack: boolean; canGoForward: boolean }) => {
       this.backButton.disabled = !data.canGoBack
       this.forwardButton.disabled = !data.canGoForward
     })
   }
 
-  async navigate(url) {
-    // Add protocol if none specified
+  async navigate(url: string) {
     if (!url.includes('://')) {
-      if (url.startsWith('about:')) {
-        // Keep about: URLs as-is
-      } else {
-        // Default to reticulum protocol
-        url = `reticulum://${url}`
+      if (!url.startsWith('about:')) {
+        url = `rweb://${url}`
       }
     }
 
@@ -71,7 +66,6 @@ class NavigationController {
   }
 }
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   new NavigationController()
 })

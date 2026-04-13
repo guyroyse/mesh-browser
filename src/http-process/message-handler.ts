@@ -1,21 +1,17 @@
-const { EventEmitter } = require('events')
+import { ChildProcess } from 'child_process'
+import { EventEmitter } from 'events'
 
-// Lifecycle frame types sent by Python backend
 const LIFECYCLE_FRAMES = ['STARTUP', 'SHUTDOWN', 'HTTP_STARTUP', 'HTTP_SHUTDOWN']
 const LOG_FRAMES = ['ERROR', 'WARNING', 'INFO', 'DEBUG']
 
-class MessageHandler extends EventEmitter {
-  #process = null
+export class MessageHandler extends EventEmitter {
+  #process: ChildProcess | null = null
   #buffer = ''
 
-  constructor() {
-    super()
-  }
-
-  attachTo(process) {
-    process.stdout.on('data', data => this.#onStdOut(data))
-    process.on('close', code => this.#onProcessExit(code))
-    process.on('error', error => this.#onProcessError(error))
+  attachTo(process: ChildProcess) {
+    process.stdout!.on('data', (data: Buffer) => this.#onStdOut(data))
+    process.on('close', (code: number | null) => this.#onProcessExit(code))
+    process.on('error', (error: Error) => this.#onProcessError(error))
 
     this.#process = process
   }
@@ -25,39 +21,34 @@ class MessageHandler extends EventEmitter {
       this.#process.removeAllListeners('data')
       this.#process.removeAllListeners('close')
       this.#process.removeAllListeners('error')
-      this.#process.stdout.removeAllListeners('data')
+      this.#process.stdout!.removeAllListeners('data')
       this.#process = null
     }
   }
 
-  #onStdOut(data) {
-    // Accumulate data in buffer
+  #onStdOut(data: Buffer) {
     this.#buffer += data.toString()
 
-    // Check if we have complete lines (ending with \n)
     if (this.#buffer.endsWith('\n')) {
-      // Process all complete lines
       console.log('Process stdout (handler):', this.#buffer.trim())
       const messages = this.#parseLifecycleMessages(this.#buffer)
       for (const message of messages) this.#processMessage(message)
       this.#buffer = ''
     }
-    // If no trailing newline, keep buffering until we get a complete message
   }
 
-  #onProcessExit(code) {
+  #onProcessExit(code: number | null) {
     console.log(`Process exited with code ${code}`)
   }
 
-  #onProcessError(error) {
+  #onProcessError(error: Error) {
     console.error('Process error:', error)
   }
 
-  #parseLifecycleMessages(data) {
+  #parseLifecycleMessages(data: string) {
     const allFrames = [...LIFECYCLE_FRAMES, ...LOG_FRAMES]
 
     return data
-      .toString()
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0 && this.#hasValidFrame(line, allFrames))
@@ -72,11 +63,11 @@ class MessageHandler extends EventEmitter {
       .filter(msg => msg !== null)
   }
 
-  #hasValidFrame(line, frames) {
+  #hasValidFrame(line: string, frames: string[]) {
     return frames.some(frame => line.startsWith(`${frame}: `))
   }
 
-  #parseFramedMessage(line, frames) {
+  #parseFramedMessage(line: string, frames: string[]) {
     for (const frame of frames) {
       const prefix = `${frame}: `
       if (line.startsWith(prefix)) {
@@ -89,7 +80,7 @@ class MessageHandler extends EventEmitter {
     throw new Error(`No valid frame found in line: ${line}`)
   }
 
-  #tryParseJSON(line) {
+  #tryParseJSON(line: string) {
     try {
       return JSON.parse(line)
     } catch (e) {
@@ -98,10 +89,10 @@ class MessageHandler extends EventEmitter {
     return null
   }
 
-  #processMessage(message) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  #processMessage(message: any) {
     const frame = message._frame
 
-    // Forward log messages to console for troubleshooting
     if (frame === 'ERROR') {
       console.error('Backend Error:', message.message)
       this.emit('error', message)
@@ -126,7 +117,6 @@ class MessageHandler extends EventEmitter {
       return
     }
 
-    // Emit lifecycle events (STARTUP, HTTP_STARTUP, SHUTDOWN, HTTP_SHUTDOWN)
     if (LIFECYCLE_FRAMES.includes(frame)) {
       console.log(`Lifecycle event '${frame}':`, message)
       this.emit(frame, message)
@@ -134,5 +124,3 @@ class MessageHandler extends EventEmitter {
     }
   }
 }
-
-module.exports = { MessageHandler }

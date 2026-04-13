@@ -1,42 +1,46 @@
-const { spawn } = require('child_process')
+import { ChildProcess, spawn, SpawnOptions } from 'child_process'
 
-// Lifecycle frame types we care about during startup
 const STARTUP_FRAMES = ['STARTUP', 'HTTP_STARTUP', 'ERROR']
 
-async function startProcess(commands, args, options = {}) {
-  let lastError = null
+interface StartResult {
+  process: ChildProcess
+  httpPort: number | null
+}
 
-  // Try each command until one works
+export async function startProcess(
+  commands: string[],
+  args: string[],
+  options: SpawnOptions = {}
+): Promise<StartResult> {
+  let lastError: Error | null = null
+
   for (const command of commands) {
     try {
       const result = await trySpawnProcess(command, args, options)
-      console.log(`Successfully started process with command: ${command}`)
+      console.log(`Successfully started process with command: ${command} ${args.join(' ')}`)
       return result
     } catch (error) {
-      lastError = error
-      console.log(`Failed to start with '${command}': ${error.message}`)
-      // Continue to next command
+      lastError = error as Error
+      console.log(`Failed to start with '${command} ${args.join(' ')}': ${(error as Error).message}`)
     }
   }
 
-  // All commands failed
   throw new Error(
-    `Failed to start process with any command. Tried: ${commands.join(', ')}. ` +
-    `Last error: ${lastError?.message}`
+    `Failed to start process with any command. Tried: ${commands.join(', ')}. ` + `Last error: ${lastError?.message}`
   )
 }
 
-function trySpawnProcess(command, args, options) {
+function trySpawnProcess(command: string, args: string[], options: SpawnOptions): Promise<StartResult> {
   return new Promise((resolve, reject) => {
     const process = spawnProcess(command, args, options)
-    let httpPort = null
+    let httpPort: number | null = null
 
     const timeout = setTimeout(() => {
       cleanup(timeout, process)
       reject(new Error('Process startup timeout'))
     }, 5000)
 
-    const cleanupAndReject = error => {
+    const cleanupAndReject = (error: Error) => {
       cleanup(timeout, process)
       reject(error)
     }
@@ -48,40 +52,37 @@ function trySpawnProcess(command, args, options) {
 
     process.on('error', cleanupAndReject)
 
-    process.stdout.on('data', data => {
+    process.stdout!.on('data', (data: Buffer) => {
       try {
         const result = processStartupMessage(data)
         if (result.httpPort) httpPort = result.httpPort
         if (result.ready) cleanupAndResolve()
       } catch (error) {
-        cleanupAndReject(error)
+        cleanupAndReject(error as Error)
       }
     })
   })
 }
 
-function spawnProcess(command, args, options) {
-  const processOptions = { stdio: ['pipe', 'pipe', 'pipe'], ...options }
+function spawnProcess(command: string, args: string[], options: SpawnOptions): ChildProcess {
+  const processOptions: SpawnOptions = { stdio: ['pipe', 'pipe', 'pipe'], ...options }
   return spawn(command, args, processOptions)
 }
 
-function processStartupMessage(data) {
+function processStartupMessage(data: Buffer) {
   console.log(data.toString().trim())
   const messages = parseStartupMessages(data.toString())
   if (messages.length === 0) return { ready: false, httpPort: null }
 
-  let httpPort = null
+  let httpPort: number | null = null
   let ready = false
 
-  // Process all messages during startup
   for (const message of messages) {
-    // Capture HTTP port from HTTP_STARTUP message (check _frame)
     if (message._frame === 'HTTP_STARTUP' && message.port) {
       httpPort = message.port
       console.log(`Startup: Captured HTTP port ${httpPort}`)
     }
 
-    // Consider process ready when we receive the 'startup' message (check both _frame and type)
     if (message._frame === 'STARTUP' || message.type === 'startup') {
       ready = true
       console.log('Startup: Backend ready signal received')
@@ -91,7 +92,7 @@ function processStartupMessage(data) {
   return { ready, httpPort }
 }
 
-function parseStartupMessages(data) {
+function parseStartupMessages(data: string) {
   return data
     .split('\n')
     .map(line => line.trim())
@@ -107,11 +108,11 @@ function parseStartupMessages(data) {
     .filter(msg => msg !== null)
 }
 
-function hasValidFrame(line) {
+function hasValidFrame(line: string) {
   return STARTUP_FRAMES.some(frame => line.startsWith(`${frame}: `))
 }
 
-function parseFramedMessage(line) {
+function parseFramedMessage(line: string) {
   for (const frame of STARTUP_FRAMES) {
     const prefix = `${frame}: `
     if (line.startsWith(prefix)) {
@@ -124,7 +125,7 @@ function parseFramedMessage(line) {
   throw new Error(`No valid frame found in line: ${line}`)
 }
 
-function tryParseJSON(line) {
+function tryParseJSON(line: string) {
   try {
     return JSON.parse(line)
   } catch (e) {
@@ -133,12 +134,10 @@ function tryParseJSON(line) {
   return null
 }
 
-function cleanup(timeout, process) {
+function cleanup(timeout: NodeJS.Timeout, process: ChildProcess) {
   if (timeout) clearTimeout(timeout)
   if (process) {
     process.removeAllListeners('error')
-    process.stdout.removeAllListeners('data')
+    process.stdout!.removeAllListeners('data')
   }
 }
-
-module.exports = { startProcess }
