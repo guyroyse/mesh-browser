@@ -18,7 +18,7 @@ MeshBrowser is an Electron-based desktop browser for decentralized protocols, cu
 
 **Electron Frontend** ↔ **HTTP API** ↔ **Python Backend (Reticulum)**
 
-- **Frontend**: Electron with custom protocol handlers for `rweb://` URLs
+- **Frontend**: Electron with electron-vite and TypeScript, custom protocol handlers for `rweb://` URLs
 - **Communication**: HTTP for data requests, stdio for process lifecycle
 - **Backend**: Python process with ThreadingHTTPServer + Reticulum networking
 
@@ -26,20 +26,35 @@ MeshBrowser is an Electron-based desktop browser for decentralized protocols, cu
 
 ```
 src/
-├── main.js                      # Electron app entry, window/view management
+├── main/                        # Electron main process
+│   ├── main.ts                 # App entry, lifecycle management
+│   ├── config.ts               # Environment detection, paths
+│   ├── windows.ts              # Window/view creation, IPC handlers, view events
+│   └── processes.ts            # Python backend process instance
+├── preload/
+│   └── preload.ts              # Context bridge for renderer ↔ main IPC
 ├── protocol-handlers/
-│   ├── protocol-schemes.js     # Protocol registration (rweb://)
-│   └── rweb-handler.js         # Protocol handler implementation
-├── views/                       # Multi-view UI (navigation, content, status)
+│   ├── protocol-schemes.ts     # Protocol registration (rweb://)
+│   └── rweb-handler.ts         # Protocol handler implementation
+├── renderer/                    # Multi-view UI (navigation, content, status)
 │   ├── navigation/             # Address bar + nav buttons
+│   │   ├── index.html
+│   │   ├── navigation.ts
+│   │   └── navigation.css
 │   ├── status/                 # Status indicators
-│   └── shared/                 # Preload scripts, common styles
+│   │   ├── index.html
+│   │   ├── status.ts
+│   │   └── status.css
+│   ├── shared/                 # Common styles, assets
+│   │   ├── common.css
+│   │   └── assets/
+│   └── types/
+│       └── window.d.ts         # BrowserAPI type declarations
 ├── http-process/               # Backend process lifecycle management
-│   ├── manager.js              # HttpProcessManager
-│   ├── starter.js              # Process startup
-│   ├── stopper.js              # Process shutdown
-│   └── message-handler.js      # Lifecycle event monitoring
-├── ipc-handlers.js             # IPC communication between views
+│   ├── manager.ts              # HttpProcessManager
+│   ├── starter.ts              # Process startup
+│   ├── stopper.ts              # Process shutdown
+│   └── message-handler.ts      # Lifecycle event monitoring
 └── python/                     # Python backend
     ├── main.py                 # Entry point
     ├── console/                # Process lifecycle (STARTUP signals, structured logging)
@@ -71,7 +86,7 @@ src/
 
 ## 2. Protocol Handler Pattern
 
-```javascript
+```typescript
 // rweb://hash/path → HTTP request → Python backend → Reticulum network
 protocol.handle('rweb', async (request) => {
   const response = await fetch('http://localhost:PORT/proxy/reticulum', {
@@ -98,12 +113,21 @@ http_server = HTTP.Server(reticulum_client)  # Pass to server
 
 ## 4. Multi-View UI Architecture
 
-Three separate WebContentsView instances:
+Three separate WebContentsView instances managed in `windows.ts`:
 - `navigationView`: Address bar + navigation controls
 - `webContentsView`: Main content area (renders rweb:// pages)
 - `statusView`: Network status indicators
 
-Views communicate via IPC. Protocol handling is transparent to views.
+Views communicate via IPC. IPC handlers and view event wiring are colocated in `windows.ts` since they operate directly on the view references. Protocol handling is transparent to views.
+
+## 5. Build Configuration
+
+electron-vite with three build targets configured in `electron.vite.config.ts`:
+- **main**: Bundles `src/main/main.ts`, uses `@main`, `@http-process`, and `@protocol-handlers` path aliases
+- **preload**: Bundles `src/preload/preload.ts` as CJS
+- **renderer**: Multiple HTML entry points (`navigation/index.html`, `status/index.html`), Vite handles `.ts` script references in HTML
+
+`ELECTRON_RENDERER_URL` is the Vite dev server base URL; each view appends its path (e.g. `/navigation/index.html`).
 
 # Important Implementation Details
 
@@ -125,16 +149,21 @@ Backend lifecycle:
 3. HTTP server becomes available on random port
 4. `pythonManager.stop()` → sends EOF to stdin → clean shutdown
 
+Python path resolution is handled in `config.ts`:
+- **Dev**: `app.getAppPath()` + `src/python/main.py`
+- **Prod**: `process.resourcesPath` + `python/main.py` (via `extraResources`)
+
 # Development Commands
 
 ```bash
-npm start              # Launch app with backend
+npm run dev            # Launch app in development mode with hot reload
+npm run build          # Build for production
 ```
 
 **Prerequisites:**
-- Node.js 24.7.0+, npm 11.5.1+
-- Python 3.13.7+
-- RNS (Reticulum Network Stack) installed at runtime
+- Node.js 22+
+- Python 3.12+
+- RNS (Reticulum Network Stack) installed in system Python
 
 # Next Phase Priorities
 

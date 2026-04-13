@@ -11,8 +11,7 @@
   "main": "out/main/main.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "rimraf out && electron-vite build",
-    "preview": "electron-vite preview"
+    "build": "rimraf out && electron-vite build"
   },
   "devDependencies": {
     "@types/node": "^25.0.8",
