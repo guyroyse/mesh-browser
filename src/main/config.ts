@@ -1,4 +1,5 @@
 import path from 'path'
+import { fileURLToPath } from 'url'
 
 import { app } from 'electron'
 
@@ -51,7 +52,7 @@ function fetchStatusUrl(): string {
 
 /* Get preload script path */
 function fetchPreloadPath(): string {
-  return new URL('../preload/preload.js', import.meta.url).pathname
+  return fileURLToPath(new URL('../preload/preload.js', import.meta.url))
 }
 
 /* Get Python backend script path */
