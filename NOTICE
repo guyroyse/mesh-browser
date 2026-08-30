@@ -1,0 +1,33 @@
+MeshBrowser
+Copyright (c) 2026 Guy Royse
+Licensed under the MIT License (see LICENSE).
+
+This product includes third-party software.
+
+--------------------------------------------------------------------------
+reticulum-js  (@reticulum/core, @reticulum/node)
+--------------------------------------------------------------------------
+Copyright (c) Henri Bergius <henri.bergius@iki.fi>
+Licensed under the European Union Public Licence v. 1.2 (EUPL-1.2).
+
+Licence text:  https://eupl.eu/1.2/en
+Source code:   https://github.com/bergie/reticulum-js
+Registry:      https://www.npmjs.com/package/@reticulum/core
+
+These packages are used unmodified, as separate components resolved at
+runtime from node_modules; they are not bundled into or merged with
+MeshBrowser's own source. Per the European Commission's guidance on the
+EUPL, linking does not by itself create a derivative work, and each
+component remains under its own licence. MeshBrowser itself is MIT.
+
+If you modify reticulum-js, the EUPL's reciprocity obligations apply to
+your modifications; prefer contributing fixes upstream.
+
+--------------------------------------------------------------------------
+seek-bzip
+--------------------------------------------------------------------------
+Licensed under the MIT License.
+Source code: https://github.com/cscott/seek-bzip
+
+Used to decompress bz2-encoded Reticulum Resources, which Python RNS peers
+send and reticulum-js does not decode on its own.

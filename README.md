@@ -12,35 +12,35 @@ MeshBrowser lets you browse web content over mesh networks like Reticulum. It wo
 - Native `rweb://` protocol support for Reticulum mesh networking
 - Automatic server discovery on your network
 - Full support for HTML, CSS, JavaScript, and images
-- No configuration needed - just install and browse
+- No per-site configuration - point it at a destination hash and browse
 
 ## Prerequisites
 
-You'll need to install the following software before running MeshBrowser:
+You'll need the following before running MeshBrowser:
 
-### 1. Python (3.12 or higher)
+### 1. A running Reticulum daemon (`rnsd`)
 
-Download and install Python from [python.org](https://www.python.org/downloads/)
-
-### 2. Reticulum Network Stack
-
-Install via pip:
+MeshBrowser speaks Reticulum from inside the app itself, but it needs a local
+Reticulum daemon to own the actual network interfaces (radios, TCP links, and
+so on). Install Reticulum and start the daemon:
 
 ```bash
-pip install rns
+pipx install rns    # or: pip install rns
+rnsd
 ```
 
-MeshBrowser might have trouble finding the Reticulum libraries if they aren't installed in the system Python. If you run into this and feel brave, you can run this instead:
+Make sure `share_instance` is enabled in `~/.reticulum/config` — it is on by
+default:
 
-```bash
-pip install rns --break-system-packages
+```
+[reticulum]
+  share_instance = Yes
 ```
 
-I've found it doesn't actually break anything. But, do it at your own risk.
+MeshBrowser attaches to that shared instance over a local socket, so whatever
+interfaces you have configured — LoRa, TCP, I2P — work automatically.
 
-If you have a good solution to this problem, feel free to open and issue to discuss or send a PR.
-
-### 3. Node.js (22 or higher)
+### 2. Node.js (22 or higher)
 
 Download and install Node.js from [nodejs.org](https://nodejs.org/)
 
@@ -61,7 +61,7 @@ Start the application in development mode:
 npm run dev
 ```
 
-The browser window will open automatically. The Python backend starts in the background and connects to the Reticulum network.
+The browser window will open automatically and connect to your running `rnsd`.
 
 ## Using MeshBrowser
 
@@ -99,16 +99,16 @@ Check the Reticulum documentation for setting up network interfaces and discover
 
 ## Troubleshooting
 
-### "Failed to start Reticulum backend"
+### "Could not reach a Reticulum shared instance"
 
-- Verify Python 3.12+ is installed
-- Verify RNS is installed: `pip show rns`
-- Check that no other process is using the Reticulum configuration
+- Verify `rnsd` is running: `rnsd` in another terminal, or check `pgrep rnsd`
+- Verify `share_instance = Yes` in `~/.reticulum/config`
+- If you run multiple shared instances, check that `instance_name` matches
 
-### "Cannot connect to backend"
+### "Could not recall server identity"
 
-- Ensure the Python backend started successfully (check console output)
-- Wait a few seconds after launch for the backend to initialize
+The destination hasn't announced itself on the network yet, so its identity
+isn't known locally. Wait for an announce and try again.
 
 ### Pages don't load
 
@@ -121,7 +121,7 @@ Check the Reticulum documentation for setting up network interfaces and discover
 To work on MeshBrowser development:
 
 1. Read `CLAUDE.md` for architecture and development context
-2. The codebase uses Electron + electron-vite + TypeScript (frontend) and Python (backend)
+2. The codebase is entirely Electron + electron-vite + TypeScript
 3. Make changes and test with `npm run dev`
 
 ## More Information

@@ -1,4 +1,3 @@
-import path from 'path'
 import { fileURLToPath } from 'url'
 
 import { app } from 'electron'
@@ -18,7 +17,6 @@ export const rendererBaseUrl = fetchRendererBaseUrl()
 export const navigationUrl = fetchNavigationUrl()
 export const statusUrl = fetchStatusUrl()
 export const preloadPath = fetchPreloadPath()
-export const pythonPath = fetchPythonPath()
 
 /* Determine the current environment */
 function fetchEnvironment(): Environment {
@@ -53,12 +51,4 @@ function fetchStatusUrl(): string {
 /* Get preload script path */
 function fetchPreloadPath(): string {
   return fileURLToPath(new URL('../preload/preload.js', import.meta.url))
-}
-
-/* Get Python backend script path */
-function fetchPythonPath(): string {
-  const devPath = path.join(app.getAppPath(), 'src', 'python', 'main.py')
-  const prodPath = path.join(process.resourcesPath, 'python', 'main.py')
-
-  return isDev ? devPath : prodPath
 }

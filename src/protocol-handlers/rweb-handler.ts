@@ -1,42 +1,35 @@
 import { protocol } from 'electron'
 import dedent from 'dedent'
 
-import { pythonManager } from '@main/processes'
+import { reticulumClient } from '@main/reticulum'
+import { parseRwebUrl } from '@rns/url'
 
 export function setupRwebHandler() {
-  const httpPort = pythonManager.getHttpPort()
-  const backendUrl = `http://localhost:${httpPort}/proxy/reticulum`
-
   protocol.handle('rweb', handleRequest)
 
   async function handleRequest(request: Request): Promise<Response> {
     console.log(`Protocol handler: Fetching ${request.url}`)
 
     try {
-      const url = new URL(request.url)
-      return await fetchFromBackend(url)
+      return await fetchFromMesh(request)
     } catch (error) {
       return createErrorResponse(request, error as Error)
     }
   }
 
-  async function fetchFromBackend(url: URL): Promise<Response> {
-    const response = await fetch(backendUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        method: 'GET',
-        url: url.href.substring(7)
-      })
+  async function fetchFromMesh(request: Request): Promise<Response> {
+    const target = parseRwebUrl(new URL(request.url))
+    const { body, contentType, statusCode } = await reticulumClient.fetch(target)
+
+    /*
+     * The remote server's status code passes straight through - a 404 from an
+     * rserver should render as a real 404 with its own body, not our error
+     * page. Only transport failures throw.
+     */
+    return new Response(body, {
+      status: statusCode,
+      headers: { 'Content-Type': contentType }
     })
-
-    const isBackendError = response.headers.get('X-Backend-Error') === 'true'
-    if (isBackendError) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error ?? response.statusText ?? `HTTP ${response.status}`)
-    }
-
-    return response
   }
 
   function createErrorResponse(request: Request, error: Error): Response {

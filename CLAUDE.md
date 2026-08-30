@@ -6,110 +6,95 @@ AI assistant context for MeshBrowser development.
 
 MeshBrowser is an Electron-based desktop browser for decentralized protocols, currently supporting Reticulum mesh networking via the `rweb://` protocol scheme. Future protocols include IPFS and Hypercore.
 
+Reticulum is spoken directly from the Electron main process using
+[reticulum-js](https://github.com/bergie/reticulum-js) (`@reticulum/core` +
+`@reticulum/node`), attached to a locally running `rnsd` shared instance.
+
 **Key Goals:**
 - Web-like browsing experience over mesh networks
 - Familiar browser interface (address bar, navigation, status indicators)
-- No configuration needed - auto-discovery and mesh routing
+- No per-site configuration - mesh routing is handled by `rnsd`
 - Extensible architecture for multiple decentralized protocols
 
 # Architecture
 
 ## High-Level Design
 
-**Electron Frontend** ↔ **HTTP API** ↔ **Python Backend (Reticulum)**
+**Electron Main Process (reticulum-js)** ↔ **local socket** ↔ **rnsd**
+
+Single process, no sidecar. The `rweb://` protocol handler calls the Reticulum
+client in-process; the client attaches to a running `rnsd` shared instance via
+`LocalClientInterface`, which is what actually owns the radios and TCP links.
 
 - **Frontend**: Electron with electron-vite and TypeScript, custom protocol handlers for `rweb://` URLs
-- **Communication**: HTTP for data requests, stdio for process lifecycle
-- **Backend**: Python process with ThreadingHTTPServer + Reticulum networking
+- **Networking**: reticulum-js in the main process (`@reticulum/node` uses `node:net`, so it must never be imported from a renderer)
+- **Transport**: `rnsd`, which the user runs separately
 
 ## File Structure
 
 ```
 src/
 ├── main/                        # Electron main process
-│   ├── main.ts                 # App entry, lifecycle management
-│   ├── config.ts               # Environment detection, paths
+│   ├── main.ts                 # App entry, lifecycle, shutdown ordering
+│   ├── config.ts               # Environment detection, renderer/preload paths
 │   ├── windows.ts              # Window/view creation, IPC handlers, view events
-│   └── processes.ts            # Python backend process instance
+│   └── reticulum.ts            # Long-lived ReticulumClient singleton
 ├── preload/
 │   └── preload.ts              # Context bridge for renderer ↔ main IPC
 ├── protocol-handlers/
 │   ├── protocol-schemes.ts     # Protocol registration (rweb://)
 │   └── rweb-handler.ts         # Protocol handler implementation
-├── renderer/                    # Multi-view UI (navigation, content, status)
-│   ├── navigation/             # Address bar + nav buttons
-│   │   ├── index.html
-│   │   ├── navigation.ts
-│   │   └── navigation.css
-│   ├── status/                 # Status indicators
-│   │   ├── index.html
-│   │   ├── status.ts
-│   │   └── status.css
-│   ├── shared/                 # Common styles, assets
-│   │   ├── common.css
-│   │   └── assets/
-│   └── types/
-│       └── window.d.ts         # BrowserAPI type declarations
-├── http-process/               # Backend process lifecycle management
-│   ├── manager.ts              # HttpProcessManager
-│   ├── starter.ts              # Process startup
-│   ├── stopper.ts              # Process shutdown
-│   └── message-handler.ts      # Lifecycle event monitoring
-└── python/                     # Python backend
-    ├── main.py                 # Entry point
-    ├── console/                # Process lifecycle (STARTUP signals, structured logging)
-    ├── http_api/               # HTTP server
-    │   ├── server.py           # ThreadingHTTPServer wrapper
-    │   └── handler.py          # Request handlers
-    └── reticulum/              # Reticulum networking (6 modules)
-        ├── client.py           # ReticulumClient coordinator
-        ├── url.py              # URL parsing
-        ├── link.py             # RNS link management
-        ├── fetch.py            # Content fetching
-        ├── response.py         # Response parsing
-        └── status.py           # Network status
+├── reticulum/                   # Reticulum networking (main process only)
+│   ├── client.ts               # Stack lifecycle, path discovery, link pool, fetch
+│   ├── url.ts                  # rweb:// URL parsing (pure)
+│   ├── response.ts             # HTTP-like response parsing (pure)
+│   ├── bz2.ts                  # bz2 codec injected into links
+│   └── seek-bzip.d.ts          # Types for seek-bzip, which ships none
+└── renderer/                    # Multi-view UI (navigation, content, status)
+    ├── navigation/             # Address bar + nav buttons
+    ├── status/                 # Status indicators
+    ├── shared/                 # Common styles, assets
+    └── types/
+        └── window.d.ts         # BrowserAPI type declarations
 ```
 
 # Key Architectural Patterns
 
-## 1. Communication Architecture
+## 1. In-Process Networking
 
-**HTTP for Data Flow:**
-- Protocol handlers use HTTP to request content: `POST /proxy/reticulum`
-- Status queries: `GET /api/status`
-- Parallel request handling via ThreadingHTTPServer
-
-**stdio for Process Lifecycle:**
-- Python backend sends structured messages (STARTUP, ERROR, WARNING, INFO)
-- Electron monitors process health via stdout/stderr
-- Clean shutdown on EOF
+`rweb://` requests call `reticulumClient.fetch()` directly - there is no IPC,
+no HTTP bridge, and no serialization hop. Resource data arrives as a
+`Uint8Array` and is handed straight to `Response`.
 
 ## 2. Protocol Handler Pattern
 
 ```typescript
-// rweb://hash/path → HTTP request → Python backend → Reticulum network
+// rweb://hash/path → ReticulumClient → RNS Link → rnsd → mesh
 protocol.handle('rweb', async (request) => {
-  const response = await fetch('http://localhost:PORT/proxy/reticulum', {
-    method: 'POST',
-    body: JSON.stringify({ url, method: 'GET' })
-  })
-  return new Response(content, { headers, status })
+  const target = parseRwebUrl(new URL(request.url))
+  const { body, contentType, statusCode } = await reticulumClient.fetch(target)
+  return new Response(body, { status: statusCode, headers: { 'Content-Type': contentType } })
 })
 ```
 
+The remote server's status code passes straight through, so an rserver 404
+renders as a real 404. Only transport failures produce the local error page.
+
 Protocol handlers enable seamless web-like browsing - all embedded resources (images, CSS, JS) automatically load via the same protocol.
 
-## 3. Shared Reticulum Instance Pattern
+## 3. Link Pooling
 
-**Critical**: Reticulum requires a single instance per program (signal handlers, threading constraints).
+**Critical**: the rserver protocol carries no request identifiers, so a
+response cannot be matched to a request. Two requests must never be in flight
+on one link.
 
-Python backend creates one `RNS.Reticulum()` instance in the main thread, then shares it across HTTP handler threads via factory pattern:
+`client.ts` keeps a per-destination pool (`MAX_LINKS_PER_DESTINATION`) with a
+semaphore bounding concurrency. Each link handles one request at a time; idle
+links are reused and closed after `LINK_IDLE_TIMEOUT`. A page with many
+subresources therefore gets bounded parallelism without response ambiguity.
 
-```python
-# main.py
-reticulum_client = Reticulum.Client()  # Main thread
-http_server = HTTP.Server(reticulum_client)  # Pass to server
-```
+Path discovery is deduplicated per destination - twenty subresources broadcast
+one `requestPath`, not twenty.
 
 ## 4. Multi-View UI Architecture
 
@@ -123,7 +108,7 @@ Views communicate via IPC. IPC handlers and view event wiring are colocated in `
 ## 5. Build Configuration
 
 electron-vite with three build targets configured in `electron.vite.config.ts`:
-- **main**: Bundles `src/main/main.ts`, uses `@main`, `@http-process`, and `@protocol-handlers` path aliases
+- **main**: Bundles `src/main/main.ts`, uses `@main`, `@rns`, and `@protocol-handlers` path aliases. `externalizeDepsPlugin()` keeps `@reticulum/*` resolved from `node_modules` rather than inlined - both to avoid bundling ESM with `node:` builtins, and to keep the EUPL-licensed dependency a separate component (see `NOTICE`)
 - **preload**: Bundles `src/preload/preload.ts` as CJS
 - **renderer**: Multiple HTML entry points (`navigation/index.html`, `status/index.html`), Vite handles `.ts` script references in HTML
 
@@ -133,25 +118,37 @@ electron-vite with three build targets configured in `electron.vite.config.ts`:
 
 ## Error Handling
 
-**Backend vs Content Errors:**
-- Backend errors (Python crashes, network failures) → `X-Backend-Error` header → custom error page
-- Reticulum content errors (404, 500) → pass through actual server response
+**Transport vs Content Errors:**
+- Transport errors (no path, no identity, timeout, `rnsd` unreachable) → thrown → custom error page, HTTP 500
+- Reticulum content errors (404, 500) → pass through as the actual server response
+
+A failure to reach `rnsd` at startup is remembered on the client and re-thrown
+from `fetch()`, so the error page says *why* rather than "not started".
 
 ## Binary Content
 
-All content transferred as base64 in JSON responses to avoid encoding issues. Protocol handler decodes before returning to Electron.
+Resource data is a `Uint8Array` and goes straight into `Response` - no base64,
+no copying. reticulum-js types it as `ArrayBufferLike`, which `BodyInit`
+rejects, so `response.ts` narrows it once at the parse boundary.
 
-## Process Management
+## bz2 Resources
 
-Backend lifecycle:
-1. `pythonManager.start()` → spawns Python process
-2. Wait for `STARTUP` message on stdout
-3. HTTP server becomes available on random port
-4. `pythonManager.stop()` → sends EOF to stdin → clean shutdown
+Python RNS bz2-compresses Resources and reticulum-js ships no codec by design.
+`link.bz2` **must** be set immediately after `createLink()`, before any
+advertisement arrives, or every fetch fails in `Resource.assemble`. This is
+invisible in JS-to-JS testing - only a real Python peer exercises it.
 
-Python path resolution is handled in `config.ts`:
-- **Dev**: `app.getAppPath()` + `src/python/main.py`
-- **Prod**: `process.resourcesPath` + `python/main.py` (via `extraResources`)
+`seek-bzip` decodes only. Any future upload/POST that *sends* a Resource will
+need an encoder such as `compressjs`.
+
+## Shutdown Ordering
+
+Electron does not await `before-quit` listeners, so `main.ts` calls
+`event.preventDefault()`, tears down behind a guard timeout, then `app.exit()`.
+Links must be torn down **before** `rns.stop()`: `teardown()` sends LINKCLOSE
+and needs the interface still up, and an ACTIVE link's 1-second watchdog is not
+cancelled by `stop()`. Getting this wrong hangs the quit rather than failing
+loudly.
 
 # Development Commands
 
@@ -162,8 +159,12 @@ npm run build          # Build for production
 
 **Prerequisites:**
 - Node.js 22+
-- Python 3.12+
-- RNS (Reticulum Network Stack) installed in system Python
+- A running `rnsd` with `share_instance` enabled
+
+Note for agents working in a VS Code integrated terminal: `ELECTRON_RUN_AS_NODE=1`
+is inherited from the extension host and makes Electron run as plain Node, so
+`electron` resolves to the npm path-string shim and the app fails to start.
+Launch with `env -u ELECTRON_RUN_AS_NODE npm run dev`.
 
 # Next Phase Priorities
 

@@ -16,7 +16,9 @@
     "baseUrl": ".",
     "paths": {
       "@main/*": ["src/main/*"],
-      "@http-process/*": ["src/http-process/*"],
+      "@rns/*": ["src/reticulum/*"],
+      "@reticulum/core/src/*": ["node_modules/@reticulum/core/types/src/*"],
+      "@reticulum/node/src/*": ["node_modules/@reticulum/node/types/src/*"],
       "@protocol-handlers/*": ["src/protocol-handlers/*"]
     }
   },

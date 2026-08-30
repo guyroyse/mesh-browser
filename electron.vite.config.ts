@@ -1,12 +1,13 @@
-import { defineConfig } from 'electron-vite'
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import path from 'path'
 
 export default defineConfig({
   main: {
+    plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
         '@main': path.resolve(__dirname, 'src/main'),
-        '@http-process': path.resolve(__dirname, 'src/http-process'),
+        '@rns': path.resolve(__dirname, 'src/reticulum'),
         '@protocol-handlers': path.resolve(__dirname, 'src/protocol-handlers')
       }
     },
