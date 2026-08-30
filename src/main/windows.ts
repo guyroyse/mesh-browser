@@ -1,6 +1,7 @@
 import { BrowserWindow, WebContentsView, ipcMain, nativeTheme } from 'electron'
 
 import { preloadPath, navigationUrl, statusUrl } from './config'
+import type { NavigationUpdate } from '../shared/ipc'
 
 let mainWindow: BrowserWindow
 let navigationView: WebContentsView
@@ -120,13 +121,12 @@ function setupViewEvents() {
   })
 
   webContentsView.webContents.on('did-start-loading', () => {
-    const updateData = {
-      canGoBack: webContentsView.webContents.navigationHistory.canGoBack(),
-      canGoForward: webContentsView.webContents.navigationHistory.canGoForward(),
-      isLoading: true
-    }
-    navigationView.webContents.send('navigation-update', updateData)
-    statusView.webContents.send('navigation-update', updateData)
+    /*
+     * No url: nothing has committed yet, so getURL() still reports the page we
+     * are navigating away from. The status bar says a plain "Loading..." until
+     * did-navigate arrives with the real destination.
+     */
+    sendNavigationUpdate({ isLoading: true, url: undefined })
   })
 
   webContentsView.webContents.on('did-stop-loading', () => {
@@ -134,25 +134,32 @@ function setupViewEvents() {
   })
 
   webContentsView.webContents.on('did-fail-load', (_event, _errorCode, errorDescription) => {
-    const updateData = {
-      canGoBack: webContentsView.webContents.navigationHistory.canGoBack(),
-      canGoForward: webContentsView.webContents.navigationHistory.canGoForward(),
-      isLoading: false,
-      error: errorDescription
-    }
-    navigationView.webContents.send('navigation-update', updateData)
-    statusView.webContents.send('navigation-update', updateData)
+    sendNavigationUpdate({ isLoading: false, error: errorDescription })
   })
 }
 
-function sendNavigationUpdate() {
-  const updateData = {
+/**
+ * Push the current navigation state to both chrome views.
+ *
+ * Every field is derived here so that callers only state what they know
+ * differently - a caller that hand-built the whole payload could, and did,
+ * silently omit one.
+ */
+function sendNavigationUpdate(overrides: Partial<NavigationUpdate> = {}) {
+  broadcast('navigation-update', {
     canGoBack: webContentsView.webContents.navigationHistory.canGoBack(),
     canGoForward: webContentsView.webContents.navigationHistory.canGoForward(),
-    isLoading: webContentsView.webContents.isLoading()
-  }
-  navigationView.webContents.send('navigation-update', updateData)
-  statusView.webContents.send('navigation-update', updateData)
+    isLoading: webContentsView.webContents.isLoading(),
+    url: webContentsView.webContents.getURL(),
+    ...overrides
+  })
+}
+
+/* Both chrome views render navigation state; neither should have to be
+   remembered separately at each call site */
+function broadcast(channel: string, payload: unknown) {
+  navigationView.webContents.send(channel, payload)
+  statusView.webContents.send(channel, payload)
 }
 
 function positionViews() {

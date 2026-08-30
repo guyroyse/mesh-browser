@@ -45,11 +45,15 @@ src/
 │   ├── protocol-schemes.ts     # Protocol registration (rweb://)
 │   └── rweb-handler.ts         # Protocol handler implementation
 ├── reticulum/                   # Reticulum networking (main process only)
-│   ├── client.ts               # Stack lifecycle, path discovery, link pool, fetch
+│   ├── client.ts               # Stack lifecycle + fetch orchestration
+│   ├── destination-pool.ts     # Per-destination path discovery, Destination, link pool
+│   ├── rserver.ts              # The rserver request/response wire protocol
 │   ├── url.ts                  # rweb:// URL parsing (pure)
 │   ├── response.ts             # HTTP-like response parsing (pure)
 │   ├── bz2.ts                  # bz2 codec injected into links
-│   └── seek-bzip.d.ts          # Types for seek-bzip, which ships none
+│   └── async.ts                # Semaphore, deadline helpers (no RNS dependency)
+├── types/
+│   └── seek-bzip.d.ts          # Ambient types for seek-bzip, which ships none
 └── renderer/                    # Multi-view UI (navigation, content, status)
     ├── navigation/             # Address bar + nav buttons
     ├── status/                 # Status indicators
@@ -72,13 +76,16 @@ no HTTP bridge, and no serialization hop. Resource data arrives as a
 // rweb://hash/path → ReticulumClient → RNS Link → rnsd → mesh
 protocol.handle('rweb', async (request) => {
   const target = parseRwebUrl(new URL(request.url))
-  const { body, contentType, statusCode } = await reticulumClient.fetch(target)
-  return new Response(body, { status: statusCode, headers: { 'Content-Type': contentType } })
+  const { body, headers, statusCode } = await reticulumClient.fetch(target)
+  return new Response(body, { status: statusCode, headers })
 })
 ```
 
-The remote server's status code passes straight through, so an rserver 404
-renders as a real 404. Only transport failures produce the local error page.
+The remote server's status code and headers pass straight through, so an
+rserver 404 renders as a real 404. `parseResponse` keeps the whole header set
+(minus framing headers like `Transfer-Encoding`, which no longer apply once the
+body is in memory) and fills in a `Content-Type` from the path when the server
+sent none. Only transport failures produce the local error page.
 
 Protocol handlers enable seamless web-like browsing - all embedded resources (images, CSS, JS) automatically load via the same protocol.
 
@@ -88,13 +95,19 @@ Protocol handlers enable seamless web-like browsing - all embedded resources (im
 response cannot be matched to a request. Two requests must never be in flight
 on one link.
 
-`client.ts` keeps a per-destination pool (`MAX_LINKS_PER_DESTINATION`) with a
-semaphore bounding concurrency. Each link handles one request at a time; idle
-links are reused and closed after `LINK_IDLE_TIMEOUT`. A page with many
-subresources therefore gets bounded parallelism without response ambiguity.
+`destination-pool.ts` owns one pool per destination (`MAX_LINKS_PER_DESTINATION`)
+with a semaphore bounding concurrency. Callers borrow a link through
+`withLink(use)` and cannot hold it past the callback, so the one-request-per-link
+invariant does not depend on caller discipline. Idle links are reused and closed
+after `LINK_IDLE_TIMEOUT`; a pool that goes fully quiet drops itself from the
+client's map.
 
 Path discovery is deduplicated per destination - twenty subresources broadcast
-one `requestPath`, not twenty.
+one `requestPath`, not twenty - and waits on transport's `announce` event rather
+than polling `hasPath`. Transport writes the routing-table entry immediately
+before dispatching that event, so `hasPath()` is already true when it fires. A
+failed discovery is remembered for `PATH_FAILURE_TTL` so that every subresource
+of an unreachable host does not serially pay the full timeout.
 
 ## 4. Multi-View UI Architecture
 
@@ -122,8 +135,10 @@ electron-vite with three build targets configured in `electron.vite.config.ts`:
 - Transport errors (no path, no identity, timeout, `rnsd` unreachable) → thrown → custom error page, HTTP 500
 - Reticulum content errors (404, 500) → pass through as the actual server response
 
-A failure to reach `rnsd` at startup is remembered on the client and re-thrown
-from `fetch()`, so the error page says *why* rather than "not started".
+`fetch()` starts the stack if it is not up, so a launch that failed because
+`rnsd` was not yet running recovers on the next navigation instead of leaving
+the app dead until restart. Concurrent calls share one attempt. The error page
+therefore reports a live connection failure rather than a remembered one.
 
 ## Binary Content
 
@@ -137,6 +152,7 @@ Python RNS bz2-compresses Resources and reticulum-js ships no codec by design.
 `link.bz2` **must** be set immediately after `createLink()`, before any
 advertisement arrives, or every fetch fails in `Resource.assemble`. This is
 invisible in JS-to-JS testing - only a real Python peer exercises it.
+`configureLink()` in `destination-pool.ts` is the one place this happens.
 
 `seek-bzip` decodes only. Any future upload/POST that *sends* a Resource will
 need an encoder such as `compressjs`.

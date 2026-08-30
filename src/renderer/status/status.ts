@@ -9,20 +9,19 @@ class StatusController {
     this.setupEventListeners()
   }
 
+  /*
+   * Every state comes from navigation-update alone. The url-changed channel is
+   * deliberately not used here: it is sent just before a navigation-update, so
+   * anything it rendered would immediately be overwritten by that message.
+   */
   setupEventListeners() {
-    window.browserAPI.onNavigationUpdate((data: { isLoading: boolean; error?: string }) => {
-      if (data.isLoading) {
-        this.setLoading('Loading...')
-      } else if (data.error) {
+    window.browserAPI.onNavigationUpdate((data) => {
+      if (data.error) {
         this.setError(data.error)
+      } else if (data.isLoading) {
+        this.setLoading(data.url ? `Loading ${this.getDisplayUrl(data.url)}...` : 'Loading...')
       } else {
         this.setReady()
-      }
-    })
-
-    window.browserAPI.onUrlChanged((url: string) => {
-      if (url) {
-        this.setLoading(`Loading ${this.getDisplayUrl(url)}...`)
       }
     })
   }
@@ -44,14 +43,10 @@ class StatusController {
 
   getDisplayUrl(url: string): string {
     try {
-      const urlObj = new URL(url)
-      if (urlObj.protocol === 'reticulum:') {
-        return urlObj.hostname || urlObj.pathname
-      } else if (urlObj.protocol === 'about:') {
-        return url
-      } else {
-        return urlObj.hostname || url
-      }
+      const parsed = new URL(url)
+
+      /* about: has no host worth showing - "about:blank" is the whole name */
+      return parsed.protocol === 'about:' ? url : parsed.hostname || url
     } catch {
       return url
     }

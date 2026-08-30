@@ -19,17 +19,14 @@ export function setupRwebHandler() {
 
   async function fetchFromMesh(request: Request): Promise<Response> {
     const target = parseRwebUrl(new URL(request.url))
-    const { body, contentType, statusCode } = await reticulumClient.fetch(target)
+    const { body, headers, statusCode } = await reticulumClient.fetch(target)
 
     /*
-     * The remote server's status code passes straight through - a 404 from an
-     * rserver should render as a real 404 with its own body, not our error
-     * page. Only transport failures throw.
+     * The remote server's status code and headers pass straight through - a
+     * 404 from an rserver should render as a real 404 with its own body, not
+     * our error page. Only transport failures throw.
      */
-    return new Response(body, {
-      status: statusCode,
-      headers: { 'Content-Type': contentType }
-    })
+    return new Response(body, { status: statusCode, headers })
   }
 
   function createErrorResponse(request: Request, error: Error): Response {

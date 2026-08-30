@@ -25,6 +25,7 @@
     "@reticulum/core": "^0.6.5",
     "@reticulum/node": "^0.6.5",
     "dedent": "^1.7.0",
+    "mime": "^4.1.0",
     "seek-bzip": "^2.0.0",
     "ulid": "^3.0.1"
   }

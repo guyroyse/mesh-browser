@@ -1,9 +1,4 @@
-interface NavigationUpdate {
-  canGoBack: boolean
-  canGoForward: boolean
-  isLoading: boolean
-  error?: string
-}
+import type { NavigationUpdate } from '../../shared/ipc'
 
 interface BrowserAPI {
   navigate: (url: string) => Promise<void>

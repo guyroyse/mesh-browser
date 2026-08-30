@@ -11,12 +11,7 @@
 
 import Bunzip from 'seek-bzip'
 
-export interface Bz2Provider {
-  decompress(data: Uint8Array, outputLength: number): Uint8Array
-  compress(data: Uint8Array): Uint8Array
-}
-
-export const bz2: Bz2Provider = {
+export const bz2 = {
   decompress(data: Uint8Array, outputLength: number): Uint8Array {
     return new Uint8Array(Bunzip.decode(Buffer.from(data), outputLength))
   },
