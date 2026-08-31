@@ -23,12 +23,35 @@ export async function requestResource(link: Link, target: RwebTarget): Promise<U
   const cleanup = new AbortController()
 
   try {
+    /*
+     * Python RNS splits anything over ~1 MiB into multiple Resources, and
+     * reticulum-js does not reassemble them (its Phase 3 scope note calls
+     * multi-segment splitting unimplemented). Each segment arrives as its own
+     * complete, hash-checked Resource, so we collect them here and join them
+     * in order. Taking only the first is what silently truncated large images.
+     */
+    const segments = new Map<number, Uint8Array>()
+
     const replied = new Promise<Uint8Array>((resolve, reject) => {
       link.addEventListener(
         'resource',
         (event) => {
           const { resource } = (event as CustomEvent).detail
-          resource.whenComplete().then(() => resolve(resource.data), reject)
+
+          resource.whenComplete().then(() => {
+            /* Both default to 1 for an unsegmented transfer */
+            const index: number = resource.segmentIndex || 1
+            const total: number = resource.totalSegments || 1
+
+            segments.set(index, resource.data)
+
+            if (total > 1) {
+              console.log(`rweb: received segment ${index}/${total} for ${target.path}`)
+            }
+
+            /* Keyed by index, so a duplicate segment cannot fake completeness */
+            if (segments.size >= total) resolve(joinSegments(segments, total))
+          }, reject)
         },
         { signal: cleanup.signal }
       )
@@ -76,4 +99,27 @@ function buildRequest(link: Link, target: RwebTarget): Packet {
     destinationHash: link.linkId,
     payload: new TextEncoder().encode(request)
   })
+}
+
+/** Concatenate segments 1..total, refusing to return a body with a hole in it. */
+function joinSegments(segments: Map<number, Uint8Array>, total: number): Uint8Array {
+  const ordered: Uint8Array[] = []
+
+  for (let index = 1; index <= total; index++) {
+    const segment = segments.get(index)
+
+    if (!segment) throw new Error(`Missing segment ${index} of ${total} in response`)
+
+    ordered.push(segment)
+  }
+
+  const joined = new Uint8Array(ordered.reduce((size, segment) => size + segment.length, 0))
+  let offset = 0
+
+  for (const segment of ordered) {
+    joined.set(segment, offset)
+    offset += segment.length
+  }
+
+  return joined
 }

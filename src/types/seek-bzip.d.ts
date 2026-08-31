@@ -1,12 +1,19 @@
 /**
  * Minimal declarations for seek-bzip, which ships no types.
  *
- * Only `decode` is declared - it is the only entry point we use. The package
- * has no encoder; see bz2.ts.
+ * Note the second argument is an *output sink or an exact buffer size*, not a
+ * maximum - passing a number makes the decoder reject any result that is not
+ * exactly that long. See bz2.ts.
  */
 declare module 'seek-bzip' {
-  const Bunzip: {
-    decode(data: Buffer | Uint8Array, outputLength?: number): Buffer
+  interface OutputSink {
+    writeByte(byte: number): void
+    getBuffer(): Buffer
   }
+
+  const Bunzip: {
+    decode(data: Buffer | Uint8Array, output?: number | OutputSink, multistream?: boolean): Buffer
+  }
+
   export default Bunzip
 }

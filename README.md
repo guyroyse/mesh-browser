@@ -93,6 +93,8 @@ Here are a few sites to get you started:
 - **CORE** — `rweb://8976c1b2ae6b60fd1a09a83a6e64ff93/`
 - **Digital Freedom** — `rweb://a5ce2b0dd7e4ecb7057936890feefbbe/`
 - **Digital Sovereignty** — `rweb://ffc8d3472451090677fd446837e384ff/`
+- **rSpace over mesh** — `rweb://5d676f5732e28dd392454763856bf00d/`
+- **lost-ti.me** — `rweb://16ce45524fef917e1a8a1d6ff8d2635d/`
 
 These are personal sites belonging to people on the network — listing them here
 isn't an endorsement of what's on them. The exception is CORE, which I run for a

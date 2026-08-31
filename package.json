@@ -1,6 +1,6 @@
 {
   "name": "mesh-browser",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Universal browser for decentralized protocols - starting with Reticulum mesh networking",
   "author": "Guy Royse <guy@guy.dev> (http://guy.dev/)",
   "license": "MIT",
