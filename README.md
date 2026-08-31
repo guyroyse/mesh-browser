@@ -95,6 +95,7 @@ Here are a few sites to get you started:
 - **Digital Sovereignty** — `rweb://ffc8d3472451090677fd446837e384ff/`
 - **rSpace over mesh** — `rweb://5d676f5732e28dd392454763856bf00d/`
 - **lost-ti.me** — `rweb://16ce45524fef917e1a8a1d6ff8d2635d/`
+- **Ingen Konge** — `rweb://2f7f25d16d5d16dece60f5fbe796d545/`
 
 These are personal sites belonging to people on the network — listing them here
 isn't an endorsement of what's on them. The exception is CORE, which I run for a
