@@ -1,9 +1,10 @@
 {
   "name": "mesh-browser",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Universal browser for decentralized protocols - starting with Reticulum mesh networking",
   "author": "Guy Royse <guy@guy.dev> (http://guy.dev/)",
   "license": "MIT",
+  "desktopName": "mesh-browser.desktop",
   "engines": {
     "node": ">=22.0.0"
   },
@@ -11,11 +12,16 @@
   "main": "out/main/main.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "rimraf out && electron-vite build"
+    "build": "rimraf out && electron-vite build",
+    "build:unpack": "npm run build && electron-builder --dir",
+    "build:linux": "npm run build && electron-builder --linux",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac"
   },
   "devDependencies": {
     "@types/node": "^25.0.8",
     "electron": "^39.2.7",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "rimraf": "^6.1.2",
     "typescript": "^5.9.3",
@@ -26,7 +32,6 @@
     "@reticulum/node": "^0.6.5",
     "dedent": "^1.7.0",
     "mime": "^4.1.0",
-    "seek-bzip": "^2.0.0",
-    "ulid": "^3.0.1"
+    "seek-bzip": "^2.0.0"
   }
 }

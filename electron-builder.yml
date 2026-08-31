@@ -1,0 +1,58 @@
+appId: dev.guy.meshbrowser
+productName: MeshBrowser
+copyright: Copyright © 2026 Guy Royse
+
+directories:
+  output: dist
+  buildResources: build
+
+# Exclusions rather than a whitelist: electron-builder includes production
+# dependencies from node_modules automatically, and externalizeDepsPlugin means
+# @reticulum/* are resolved from there at runtime rather than bundled.
+files:
+  - '!src/*'
+  - '!.github/*'
+  - '!electron.vite.config.ts'
+  - '!tsconfig.json'
+  - '!**/*.map'
+
+# Shipped alongside the app rather than inside the asar, so the third-party
+# licence terms are readable in an installed copy.
+extraResources:
+  - NOTICE
+  - LICENSE
+
+publish:
+  provider: github
+  owner: guyroyse
+  repo: mesh-browser
+  releaseType: draft
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Network
+  # Electron derives its app_id / WM_CLASS from `desktopName` in package.json;
+  # this keeps the generated .desktop entry's StartupWMClass matching it, so
+  # desktop environments can associate a running window with the launcher.
+  syncDesktopName: true
+  synopsis: Browser for decentralized protocols
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+mac:
+  # The macOS runner is arm64, so an unqualified build would ship arm64 only
+  # and refuse to launch on Intel Macs
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.social-networking
