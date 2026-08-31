@@ -88,10 +88,15 @@ To browse content on the Reticulum network, you'll need:
 - **RServer addresses** - Reticulum servers hosting web content
 - **Network connectivity** - Active Reticulum network interface
 
-Here are a couple of sites to get you started:
+Here are a few sites to get you started:
 
-- `rweb://8976c1b2ae6b60fd1a09a83a6e64ff93/` - Home of RETNET, MeshBrowser, and RServer on Reticulum
-- `rweb://a5ce2b0dd7e4ecb7057936890feefbbe/` - A community site on the network
+- **CORE** — `rweb://8976c1b2ae6b60fd1a09a83a6e64ff93/`
+- **Digital Freedom** — `rweb://a5ce2b0dd7e4ecb7057936890feefbbe/`
+- **Digital Sovereignty** — `rweb://ffc8d3472451090677fd446837e384ff/`
+
+These are personal sites belonging to people on the network — listing them here
+isn't an endorsement of what's on them. The exception is CORE, which I run for a
+radio meetup.
 
 Note that there isn't much content on the network yet — it's early days! But you can host some content and help with that. Check out [RServer](https://github.com/guyroyse/rserver) - a web server for Reticulum.
 
