@@ -32,35 +32,55 @@ client in-process; the client attaches to a running `rnsd` shared instance via
 
 ## File Structure
 
+Top level is split by **process**, because that is the boundary that decides
+what can run at all: `@reticulum/node` uses `node:net`, so everything under
+`main/` is unavailable to a renderer. Feature folders live one level down.
+
 ```
 src/
-├── main/                        # Electron main process
+├── main/                        # Electron main process (Node)
 │   ├── main.ts                 # App entry, lifecycle, shutdown ordering
-│   ├── config.ts               # Environment detection, renderer/preload paths
+│   ├── config.ts               # Tunable settings (future config-file home)
+│   ├── theme.ts                # Content-view colours mirroring theme.css
+│   ├── lifecycle.ts            # Startable / Stoppable / Lifecycle contracts
+│   ├── paths.ts                # Renderer URLs + preload path (environment-derived)
 │   ├── windows.ts              # Window/view creation, IPC handlers, view events
-│   └── reticulum.ts            # Long-lived ReticulumClient singleton
+│   ├── protocols/               # Protocol layer: schemes, clients, handlers
+│   │   ├── protocols.ts        # Three lifecycle phases; owns the clients
+│   │   └── rweb.ts             # rweb:// scheme, handler factory, error page
+│   └── reticulum/               # Reticulum networking
+│       ├── client.ts           # Stack lifecycle + fetch orchestration
+│       ├── destination-pool.ts # Per-destination path discovery, Destination, link pool
+│       ├── rserver.ts          # The rserver request/response wire protocol
+│       ├── url.ts              # rweb:// URL parsing (pure)
+│       ├── response.ts         # HTTP-like response parsing (pure)
+│       ├── bz2.ts              # bz2 codec injected into links
+│       └── async.ts            # Semaphore, deadline helpers (no RNS dependency)
 ├── preload/
-│   └── preload.ts              # Context bridge for renderer ↔ main IPC
-├── protocol-handlers/
-│   ├── protocol-schemes.ts     # Protocol registration (rweb://)
-│   └── rweb-handler.ts         # Protocol handler implementation
-├── reticulum/                   # Reticulum networking (main process only)
-│   ├── client.ts               # Stack lifecycle + fetch orchestration
-│   ├── destination-pool.ts     # Per-destination path discovery, Destination, link pool
-│   ├── rserver.ts              # The rserver request/response wire protocol
-│   ├── url.ts                  # rweb:// URL parsing (pure)
-│   ├── response.ts             # HTTP-like response parsing (pure)
-│   ├── bz2.ts                  # bz2 codec injected into links
-│   └── async.ts                # Semaphore, deadline helpers (no RNS dependency)
-├── types/
-│   └── seek-bzip.d.ts          # Ambient types for seek-bzip, which ships none
-└── renderer/                    # Multi-view UI (navigation, content, status)
-    ├── navigation/             # Address bar + nav buttons
-    ├── status/                 # Status indicators
-    ├── shared/                 # Common styles, assets
-    └── types/
-        └── window.d.ts         # BrowserAPI type declarations
+│   └── preload.ts              # Context bridge for renderer ↔ main IPC (built as CJS)
+├── renderer/                    # Browser chrome only - NOT the browsed page
+│   ├── navigation/             # Address bar + nav buttons
+│   ├── status/                 # Status indicators
+│   ├── shared/                 # Common styles, assets
+│   └── types/
+│       └── window.d.ts         # BrowserAPI type declarations
+├── shared/
+│   └── ipc.ts                  # main ↔ renderer message contract (types only)
+└── types/
+    └── seek-bzip.d.ts          # Ambient types for seek-bzip, which ships none
 ```
+
+The view that renders `rweb://` content has no preload and no IPC channel - it
+is remote mesh HTML and gets no more privilege than a normal web page.
+
+**config.ts vs paths.ts**: `config.ts` holds numbers someone could reasonably
+want different (timeouts, pool size, limits) and is shaped as one object so a
+config file later means merging overrides into defaults. `paths.ts` holds
+values derived from how the app was launched, which nobody configures;
+environment detection is private to it. Protocol invariants - a destination
+hash is 16 bytes, HTTP headers end with a blank line - stay beside the code
+that depends on them, where changing one reads as the bug it would be.
+
 
 # Key Architectural Patterns
 
@@ -71,6 +91,9 @@ no HTTP bridge, and no serialization hop. Resource data arrives as a
 `Uint8Array` and is handed straight to `Response`.
 
 ## 2. Protocol Handler Pattern
+
+Files are named for what they hold - there are deliberately no `index.ts`
+barrels, since a tree full of identically-named tabs is hard to navigate.
 
 ```typescript
 // rweb://hash/path → ReticulumClient → RNS Link → rnsd → mesh
@@ -109,7 +132,31 @@ before dispatching that event, so `hasPath()` is already true when it fires. A
 failed discovery is remembered for `PATH_FAILURE_TTL` so that every subresource
 of an unreachable host does not serially pay the full timeout.
 
-## 4. Multi-View UI Architecture
+## 4. Protocol Lifecycle
+
+`protocols/protocols.ts` owns the protocol clients and exposes three phases,
+because Electron dictates the split: `registerProtocolSchemes()` must run
+*before* app-ready, `setupProtocols()` only *after* it, and
+`teardownProtocols()` on quit. `main.ts` sequences those and does nothing else
+protocol-specific.
+
+Clients are warmed up **fire-and-forget**, never awaited. A client that cannot
+reach its daemon just means that network is unavailable on this machine, which
+is not an app error - it surfaces on that protocol's error page if the user
+asks for it. `fetch()` starts the stack on first use anyway, so the warm-up is
+an optimisation (open the connection early, start collecting announces), not a
+precondition.
+
+Clients implement `Lifecycle` (`main/lifecycle.ts`), so a client whose
+`start`/`stop` signatures drift fails to compile. `warmUp` and `shutDown` take
+the narrower `Startable` / `Stoppable` halves, so neither can do the other's
+job. `src/types/` is deliberately reserved for ambient shims of untyped
+third-party packages; domain contracts like this live beside their domain.
+
+Adding a protocol is a file beside `rweb.ts` exporting a scheme descriptor and
+a handler factory, plus two lines in `protocols.ts`.
+
+## 5. Multi-View UI Architecture
 
 Three separate WebContentsView instances managed in `windows.ts`:
 - `navigationView`: Address bar + navigation controls
@@ -118,12 +165,15 @@ Three separate WebContentsView instances managed in `windows.ts`:
 
 Views communicate via IPC. IPC handlers and view event wiring are colocated in `windows.ts` since they operate directly on the view references. Protocol handling is transparent to views.
 
-## 5. Build Configuration
+## 6. Build Configuration
 
 electron-vite with three build targets configured in `electron.vite.config.ts`:
-- **main**: Bundles `src/main/main.ts`, uses `@main`, `@rns`, and `@protocol-handlers` path aliases. `externalizeDepsPlugin()` keeps `@reticulum/*` resolved from `node_modules` rather than inlined - both to avoid bundling ESM with `node:` builtins, and to keep the EUPL-licensed dependency a separate component (see `NOTICE`)
+- **main**: Bundles `src/main/main.ts`. No path aliases - everything main-only lives under `src/main/`, so relative imports stay short and there is no alias list to keep in sync between `electron.vite.config.ts` and `tsconfig.json`. `externalizeDepsPlugin()` keeps `@reticulum/*` resolved from `node_modules` rather than inlined - both to avoid bundling ESM with `node:` builtins, and to keep the EUPL-licensed dependency a separate component (see `NOTICE`)
 - **preload**: Bundles `src/preload/preload.ts` as CJS
-- **renderer**: Multiple HTML entry points (`navigation/index.html`, `status/index.html`), Vite handles `.ts` script references in HTML
+- **renderer**: Multiple HTML entry points (`navigation/index.html`, `status/index.html`). Script tags **must** carry `type="module"` - Vite silently refuses to bundle a classic script, emitting no JS at all while the built HTML still points at the `.ts` file
+
+`tsconfig.json` keeps only the `@reticulum/core/src/*` and `@reticulum/node/src/*`
+mappings, which point at the types reticulum-js ships outside its package root.
 
 `ELECTRON_RENDERER_URL` is the Vite dev server base URL; each view appends its path (e.g. `/navigation/index.html`).
 

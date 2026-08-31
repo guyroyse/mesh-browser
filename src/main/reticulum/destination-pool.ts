@@ -13,35 +13,14 @@
 import { Destination, DestType, type Link, type Reticulum } from '@reticulum/core'
 import { LinkStatus } from '@reticulum/core/src/transport/link.js'
 
+import { config } from '../config'
 import { rejectAfter, Semaphore, withDeadline } from './async'
 import { bz2 } from './bz2'
 
-/* rserver listens on the "rserver.web" aspect */
+/* rserver listens on the "rserver.web" aspect - protocol identity, not a setting */
 const APP_NAME = 'rserver.web'
 
-/*
- * Timeouts match the Python implementation. A LoRa path can genuinely take
- * minutes, so these stay generous - the spike's 30s is too tight.
- */
-const PATH_DISCOVERY_TIMEOUT = 120_000
-const LINK_ESTABLISHMENT_TIMEOUT = 120_000
-
-const MAX_LINKS_PER_DESTINATION = 4
-const LINK_IDLE_TIMEOUT = 60_000
-
-/*
- * How long a failed path discovery is remembered. Without this, every
- * subresource of a page on an unreachable host pays the full discovery
- * timeout in turn.
- */
-const PATH_FAILURE_TTL = 30_000
-
-/*
- * reticulum-js rejects Resource advertisements over 32 MB as a bomb defense.
- * Python's ACCEPT_ALL has no cap, so leaving the default would silently break
- * large downloads that work today.
- */
-const MAX_RESOURCE_SIZE = 256 * 1024 * 1024
+const settings = config.reticulum
 
 export interface DestinationPoolOptions {
   /** Called when the pool has no links and no callers left, so it can be dropped. */
@@ -54,7 +33,7 @@ export class DestinationPool {
   readonly #destHashHex: string
   readonly #onDispose: () => void
 
-  #semaphore = new Semaphore(MAX_LINKS_PER_DESTINATION)
+  #semaphore = new Semaphore(settings.maxLinksPerDestination)
   #idle: Link[] = []
   #live = new Set<Link>()
   #idleTimers = new Map<Link, NodeJS.Timeout>()
@@ -147,7 +126,7 @@ export class DestinationPool {
 
     this.#pathPromise ??= this.#discoverPath()
       .catch((error: Error) => {
-        this.#pathFailure = { error, until: Date.now() + PATH_FAILURE_TTL }
+        this.#pathFailure = { error, until: Date.now() + settings.pathFailureTtl }
         throw error
       })
       .finally(() => {
@@ -189,9 +168,9 @@ export class DestinationPool {
       await Promise.race([
         announced,
         rejectAfter(
-          PATH_DISCOVERY_TIMEOUT,
+          settings.pathDiscoveryTimeout,
           `Could not find path to destination ${this.#destHashHex} ` +
-            `within ${PATH_DISCOVERY_TIMEOUT / 1000}s`,
+            `within ${settings.pathDiscoveryTimeout / 1000}s`,
           cleanup.signal
         )
       ])
@@ -219,8 +198,8 @@ export class DestinationPool {
     const destination = await this.#resolveDestination()
     const link = await withDeadline(
       destination.createLink(),
-      LINK_ESTABLISHMENT_TIMEOUT,
-      `Link establishment timeout after ${LINK_ESTABLISHMENT_TIMEOUT / 1000}s`
+      settings.linkEstablishmentTimeout,
+      `Link establishment timeout after ${settings.linkEstablishmentTimeout / 1000}s`
     )
 
     configureLink(link)
@@ -262,7 +241,7 @@ export class DestinationPool {
     const timer = setTimeout(() => {
       this.#forget(link)
       this.#disposeIfEmpty()
-    }, LINK_IDLE_TIMEOUT)
+    }, settings.linkIdleTimeout)
 
     /* Nothing should stay alive merely to close an idle link */
     timer.unref()
@@ -314,7 +293,7 @@ export class DestinationPool {
  */
 function configureLink(link: Link): void {
   link.bz2 = bz2
-  link.maxResourceSize = MAX_RESOURCE_SIZE
+  link.maxResourceSize = settings.maxResourceSize
 }
 
 /** Teardown is best-effort: a link we are done with may already be gone. */

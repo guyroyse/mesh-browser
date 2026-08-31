@@ -1,11 +1,8 @@
 import { app, BrowserWindow } from 'electron'
 
-import { reticulumClient } from './reticulum'
-import { registerProtocolSchemes, setupProtocolHandlers } from '@protocol-handlers/protocol-schemes'
-import { createMainWindow } from './windows'
-
-/* Links run a 1-second watchdog; don't let a stuck teardown hang the quit */
-const SHUTDOWN_TIMEOUT = 5000
+import { config } from './config'
+import { registerProtocolSchemes, setupProtocols, teardownProtocols } from './protocols/protocols'
+import { createMainWindow, setupWindowHandlers } from './windows'
 
 let shuttingDown = false
 
@@ -16,8 +13,8 @@ app.on('window-all-closed', handleWindowAllClosed)
 app.on('before-quit', handleBeforeQuit)
 
 async function handleWhenReady() {
-  await startReticulum()
-  setupProtocolHandlers()
+  setupProtocols()
+  setupWindowHandlers()
   await createMainWindow()
 
   app.on('activate', handleActivate)
@@ -42,32 +39,15 @@ async function handleBeforeQuit(event: Electron.Event) {
   event.preventDefault()
   shuttingDown = true
 
-  await stopReticulum()
+  /*
+   * Whichever lands first: a clean teardown, or the budget running out. The
+   * timer resolves rather than rejects on purpose - a client that will not
+   * stop should delay the quit, not prevent it.
+   */
+  await Promise.race([
+    teardownProtocols(),
+    new Promise<void>((resolve) => setTimeout(resolve, config.shutdownTimeout))
+  ])
+
   app.exit(0)
-}
-
-async function startReticulum() {
-  try {
-    await reticulumClient.start()
-    console.log('Reticulum client started successfully')
-  } catch (error) {
-    /*
-     * Keep going: the window still opens, and the failure is reported on the
-     * error page when the user tries to navigate.
-     */
-    console.error('Failed to start Reticulum client:', error)
-  }
-}
-
-async function stopReticulum() {
-  try {
-    await withTimeout(reticulumClient.stop(), SHUTDOWN_TIMEOUT)
-    console.log('Reticulum client stopped successfully')
-  } catch (error) {
-    console.error('Failed to stop Reticulum client cleanly:', error)
-  }
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | void> {
-  return Promise.race([promise, new Promise<void>((resolve) => setTimeout(resolve, ms))])
 }

@@ -8,10 +8,9 @@
 
 import { ContextType, type Link, Packet, PacketType } from '@reticulum/core'
 
+import { config } from '../config'
 import { rejectAfter } from './async'
 import type { RwebTarget } from './url'
-
-const RESPONSE_TIMEOUT = 300_000
 
 /**
  * Send one request and await the response bytes.
@@ -52,8 +51,8 @@ export async function requestResource(link: Link, target: RwebTarget): Promise<U
     return await Promise.race([
       replied,
       rejectAfter(
-        RESPONSE_TIMEOUT,
-        `No response received within ${RESPONSE_TIMEOUT / 1000}s for ${target.path}`,
+        config.reticulum.responseTimeout,
+        `No response received within ${config.reticulum.responseTimeout / 1000}s for ${target.path}`,
         cleanup.signal
       )
     ])

@@ -1,8 +1,7 @@
 /**
  * URL parsing for rweb:// destinations.
  *
- * Port of src/python/reticulum/url.py. Pure — no Reticulum dependency beyond
- * hex decoding.
+ * Pure — no Reticulum dependency beyond hex decoding.
  */
 
 import { fromHex } from '@reticulum/core'

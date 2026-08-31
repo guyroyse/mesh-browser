@@ -1,17 +1,10 @@
 /**
  * HTTP-like response parsing for content fetched over Reticulum.
  *
- * Ported from the former Python backend, with two deliberate changes:
- *
- *   1. No base64. The Python version base64-encoded the body only to decode it
- *      again one call later in its own HTTP handler; that round trip existed
- *      solely to cross the JSON bridge, which is gone. Resource data arrives as
- *      a Uint8Array and is handed straight to Response.
- *
- *   2. Header detection is anchored rather than searched. Python tested
- *      `b'\r\n\r\n' in content`, so a headerless binary body that happened to
- *      contain that sequence was split, and everything before it silently
- *      discarded. We require the response to actually begin with `HTTP/`.
+ * Header detection is anchored rather than searched: a response has to begin
+ * with `HTTP/` before we go looking for the blank line. Searching the payload
+ * for `\r\n\r\n` instead would split a headerless binary body that happened to
+ * contain those four bytes, silently discarding everything before them.
  */
 
 import mime from 'mime'
@@ -106,7 +99,7 @@ function indexOfSeparator(content: Uint8Array): number {
   return -1
 }
 
-/** 'HTTP/1.1 200 OK' -> 200. Defaults to 200, matching the Python behaviour. */
+/** 'HTTP/1.1 200 OK' -> 200, defaulting to 200 when the status line is unparseable. */
 function extractStatusCode(block: string): number {
   const statusLine = block.split('\r\n')[0] ?? ''
   const statusCode = Number.parseInt(statusLine.split(' ')[1] ?? '', 10)

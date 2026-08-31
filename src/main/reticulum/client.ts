@@ -1,20 +1,21 @@
 /**
- * Reticulum client - replaces the Python RNS backend this app used to spawn.
- *
  * Owns a single long-lived Reticulum instance attached to a running rnsd
- * shared instance, and fetches rweb:// content over RNS Links. Link pooling
- * lives in DestinationPool; the request format lives in rserver.ts.
+ * shared instance, and fetches rweb:// content over RNS Links.
+ *
+ * Link pooling lives in DestinationPool; the request format lives in
+ * rserver.ts.
  */
 
 import { Reticulum } from '@reticulum/core'
 import { LocalClientInterface } from '@reticulum/node'
 
+import type { Lifecycle } from '../lifecycle'
 import { DestinationPool } from './destination-pool'
 import { parseResponse, type ParsedResponse } from './response'
 import { requestResource } from './rserver'
 import type { RwebTarget } from './url'
 
-export class ReticulumClient {
+export class ReticulumClient implements Lifecycle {
   #rns: Reticulum | null = null
   #startPromise: Promise<void> | null = null
   #stopped = false

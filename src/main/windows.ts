@@ -1,18 +1,37 @@
 import { BrowserWindow, WebContentsView, ipcMain, nativeTheme } from 'electron'
 
-import { preloadPath, navigationUrl, statusUrl } from './config'
+import { config } from './config'
+import { preloadPath, navigationUrl, statusUrl } from './paths'
+import { contentBackground } from './theme'
 import type { NavigationUpdate } from '../shared/ipc'
 
+/*
+ * One window's worth of views. Multi-window will need these per window, with
+ * IPC routed by event.sender to the calling window's content view - see
+ * setupWindowHandlers.
+ */
 let mainWindow: BrowserWindow
 let navigationView: WebContentsView
 let webContentsView: WebContentsView
 let statusView: WebContentsView
 
+/**
+ * Register what belongs to the app rather than to any one window.
+ *
+ * Must be called exactly once, before the first window: ipcMain.handle throws
+ * if a channel already has a handler, and every extra nativeTheme listener
+ * leaks. Creating a second window used to re-run both.
+ */
+export function setupWindowHandlers(): void {
+  setupIpcHandlers()
+  nativeTheme.on('updated', applyContentBackground)
+}
+
 export async function createMainWindow(): Promise<BrowserWindow> {
   /* Create the main application window */
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: config.window.width,
+    height: config.window.height,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true
@@ -52,27 +71,42 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   mainWindow.contentView.addChildView(webContentsView)
   mainWindow.contentView.addChildView(statusView)
 
-  /* Set up IPC handlers and view event listeners before loading content */
-  setupIpcHandlers()
+  /* Per-window wiring; the app-wide handlers are registered separately */
   setupViewEvents()
 
   /* Load content into views */
   await navigationView.webContents.loadURL(navigationUrl)
   await statusView.webContents.loadURL(statusUrl)
 
-  /* Initial positioning of views and setup resize listener */
-  positionViews()
+  /*
+   * Re-lay out whenever the content area changes size.
+   *
+   * `bounds-changed` is emitted by Chromium's own view layout rather than by a
+   * window-manager event, so it fires the same way everywhere - including on
+   * compositors that never deliver maximize or resize to Electron - and the
+   * new bounds are readable by the time it arrives. `resize` stays as a
+   * backstop for ordinary drag-resizing; positionViews is idempotent, so both
+   * firing costs nothing.
+   */
+  mainWindow.contentView.on('bounds-changed', positionViews)
   mainWindow.on('resize', positionViews)
 
-  /* Set initial background color based on theme and listen for theme changes */
-  webContentsView.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1a1a1a' : '#ffffff')
-  nativeTheme.on('updated', () => {
-    webContentsView.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1a1a1a' : '#ffffff')
-  })
+  positionViews()
+
+  /* The OS-theme listener is registered once in setupWindowHandlers */
+  applyContentBackground()
 
   mainWindow.show()
 
   return mainWindow
+}
+
+/* Keeps a mesh page from flashing white before it paints */
+function applyContentBackground() {
+  const { dark, light } = contentBackground
+
+  /* The theme can flip after handlers are registered but before a window exists */
+  webContentsView?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? dark : light)
 }
 
 function setupIpcHandlers() {
@@ -163,8 +197,13 @@ function broadcast(channel: string, payload: unknown) {
 }
 
 function positionViews() {
-  /* Get the current size of the main window's content area */
-  const { height, width } = mainWindow.getContentBounds()
+  /*
+   * Read the size from the view tree rather than from the window. Child views
+   * are positioned relative to contentView, and this is the value Chromium has
+   * just finished laying out - getContentBounds() can still report the old
+   * size when a window-manager event arrives early.
+   */
+  const { height, width } = mainWindow.contentView.getBounds()
 
   /* Calculate dimensions and positions for each view based on the main window size */
   const navigationViewHeight = 50
@@ -177,7 +216,8 @@ function positionViews() {
   const statusViewX = 0
   const statusViewY = height - statusViewHeight
 
-  const webContentViewHeight = height - navigationViewHeight - statusViewHeight
+  /* Clamped: a minimized or very short window would otherwise go negative */
+  const webContentViewHeight = Math.max(0, height - navigationViewHeight - statusViewHeight)
   const webContentViewWidth = width
   const webContentViewX = 0
   const webContentViewY = navigationViewHeight

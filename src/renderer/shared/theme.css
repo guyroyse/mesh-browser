@@ -1,0 +1,47 @@
+/*
+ * Design tokens for the browser chrome.
+ *
+ * NOTE: --bg-primary is mirrored in src/main/theme.ts, which sets the native
+ * background of the content view before a mesh page paints. The main process
+ * cannot read CSS, so those two values must be changed together.
+ */
+
+:root {
+  /* Light mode colors (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --text-primary: #000000;
+  --text-secondary: #6c757d;
+  --text-accent: #007acc;
+  --border-color: #e9ecef;
+  --border-input: #ced4da;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --glow-color: rgba(0, 122, 204, 0.6);
+
+  /* Status icon colors */
+  --status-ready: #28a745;
+  --status-loading: #007acc;
+  --status-error: #dc3545;
+  --status-loading-glow: 0, 122, 204;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode colors */
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --text-accent: #4fc3f7;
+    --border-color: #404040;
+    --border-input: #555555;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --glow-color: rgba(79, 195, 247, 0.6);
+
+    /* Status icon colors - same in dark mode */
+    --status-ready: #28a745;
+    --status-loading: #4fc3f7;
+    --status-error: #dc3545;
+    --status-loading-glow: 79, 195, 247;
+  }
+}
