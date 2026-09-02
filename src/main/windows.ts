@@ -170,6 +170,16 @@ function setupViewEvents() {
   webContentsView.webContents.on('did-fail-load', (_event, _errorCode, errorDescription) => {
     sendNavigationUpdate({ isLoading: false, error: errorDescription })
   })
+
+  /*
+   * Chromium sends the hovered link's URL, and an empty string when the pointer
+   * leaves it - so the clear is the same message, and the renderer needs no
+   * separate "hover ended" channel. Sent only to the status view: unlike
+   * navigation state, nothing in the navigation chrome renders this.
+   */
+  webContentsView.webContents.on('update-target-url', (_event, url) => {
+    statusView.webContents.send('target-url-changed', url)
+  })
 }
 
 /**
