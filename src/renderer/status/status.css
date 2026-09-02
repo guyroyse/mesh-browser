@@ -1,7 +1,10 @@
 body {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
-  padding: 5px 10px;
+  /* Symmetric inset: the status dot is only 8px, so it needs the gutter to read
+     as deliberate rather than crowded, and anything right-aligned in this bar
+     wants the same distance from its own edge. */
+  padding: 5px 14px;
   font-size: 12px;
   color: var(--text-secondary);
   display: flex;
