@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>MeshBrowser — orrery mark, full form</title>
+  <desc>Source for icon.png and for build/icons/ at 48px and above.</desc>
+  <rect x="48" y="48" width="928" height="928" rx="208" fill="#1a1a1a"/>
+  <!-- 64-unit artwork scaled by 11.40625 and centred: x' = 147 + x*11.40625 -->
+  <g transform="translate(147 147) scale(11.40625)" fill="none" stroke="#ffc107">
+    <circle cx="32" cy="32" r="26" stroke-width="4"/>
+    <circle cx="32" cy="32" r="14" stroke-width="4"/>
+    <g fill="#ffc107" stroke="none">
+      <circle cx="32" cy="32" r="6"/>
+      <circle cx="32" cy="18" r="5"/>
+      <circle cx="19.9" cy="39" r="5"/>
+      <circle cx="54.5" cy="19" r="5"/>
+      <circle cx="32" cy="58" r="5"/>
+    </g>
+  </g>
+</svg>

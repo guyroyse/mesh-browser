@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>MeshBrowser — orrery mark, reduced form</title>
+  <desc>Source for build/icons/ at 32px and below. The full mark has five
+        alternating bands across its diameter; below 48px that is roughly two
+        pixels per band and resolves to mush. This drops to three bands and
+        spaces three nodes evenly, so the bulges read as rhythm rather than
+        damage.</desc>
+  <rect x="48" y="48" width="928" height="928" rx="208" fill="#1a1a1a"/>
+  <g transform="translate(147 147) scale(11.40625)" fill="none" stroke="#ffc107">
+    <circle cx="32" cy="32" r="19.5" stroke-width="7"/>
+    <g fill="#ffc107" stroke="none">
+      <circle cx="32" cy="32" r="9"/>
+      <circle cx="32" cy="12.5" r="6.5"/>
+      <circle cx="48.89" cy="41.75" r="6.5"/>
+      <circle cx="15.11" cy="41.75" r="6.5"/>
+    </g>
+  </g>
+</svg>
