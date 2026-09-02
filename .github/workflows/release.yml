@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_version_guard:
+        description: 'Publish into the existing release for this version (for re-running after a partial platform failure)'
+        type: boolean
+        default: false
+
+# electron-builder needs write access to create and update the draft release
+permissions:
+  contents: write
+
+jobs:
+  # Runs once, ahead of the matrix, so a forgotten version bump fails in seconds
+  # rather than after three serialised platform builds have quietly uploaded
+  # over an existing draft.
+  guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: version
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the version has not already been released
+        if: ${{ !inputs.skip_version_guard }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # `gh release view` resolves drafts too, which is the case that matters:
+          # a draft carries no git tag, so checking tags alone would miss it.
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Release v$VERSION already exists. Bump the version in package.json on develop before merging to main, or re-run this workflow manually with skip_version_guard to publish into it."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag v$VERSION already exists. Bump the version in package.json on develop before merging to main."
+            exit 1
+          fi
+          echo "v$VERSION is unreleased."
+
+  build:
+    needs: guard
+
+    strategy:
+      # Each job publishes into the same draft release, so they are serialised:
+      # running in parallel races to create it and can leave duplicate drafts.
+      # Safe to drop to speed builds up if you would rather tidy those by hand.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Package and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No Apple certificate: skip signing rather than failing the build
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder --publish always

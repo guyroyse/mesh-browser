@@ -232,6 +232,24 @@ is inherited from the extension host and makes Electron run as plain Node, so
 `electron` resolves to the npm path-string shim and the app fails to start.
 Launch with `env -u ELECTRON_RUN_AS_NODE npm run dev`.
 
+# Branching and Delivery
+
+Gitflow. `main` is the current release, `develop` is the integration branch,
+features branch off `develop` and PR back into it. Nothing but a
+`develop` -> `main` release merge ever touches `main`.
+
+`.github/workflows/release.yml` is the only workflow, and it is delivery rather
+than CI: it runs on push to `main` and produces the installers that *are* the
+shipped application. A `guard` job fails the run if `v{package.json version}`
+already has a release or tag - drafts included, since a draft carries no tag -
+so **bump the version on `develop` before merging to `main`**. The matrix then
+typechecks, builds, and packages all three platforms serially into one draft
+release; publishing that draft by hand is what creates the git tag.
+
+There is deliberately no per-push CI on `develop` or feature branches yet.
+Tests and pre-merge checks are future work; until they exist, `main` is the
+first place anything is verified.
+
 # Next Phase Priorities
 
 **Phase 2: Enhanced UX**
