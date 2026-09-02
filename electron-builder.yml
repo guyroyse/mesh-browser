@@ -18,9 +18,15 @@ files:
 
 # Shipped alongside the app rather than inside the asar, so the third-party
 # licence terms are readable in an installed copy.
+#
+# icon.png is here for a different reason: buildResources is not itself shipped,
+# and Linux takes its window icon from BrowserWindow at runtime, so a packaged
+# run needs a copy it can read. paths.ts resolves it from process.resourcesPath.
 extraResources:
   - NOTICE
   - LICENSE
+  - from: build/icon.png
+    to: icon.png
 
 publish:
   provider: github
