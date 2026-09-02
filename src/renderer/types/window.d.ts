@@ -10,6 +10,7 @@ interface BrowserAPI {
   getURL: () => Promise<string>
   onNavigationUpdate: (callback: (data: NavigationUpdate) => void) => void
   onUrlChanged: (callback: (url: string) => void) => void
+  onTargetUrlChanged: (callback: (url: string) => void) => void
 }
 
 declare global {

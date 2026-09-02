@@ -33,3 +33,22 @@ body {
 #status-icon.error {
   color: var(--status-error);
 }
+
+/*
+ * The hovered link's URL, pushed to the right edge because the status text
+ * already owns the left. margin-left: auto does the pushing so the icon and
+ * status text keep their natural flex sizing.
+ *
+ * An rweb:// URL carries a 32-hex-character destination hash, so it is long by
+ * nature: capped at half the bar and ellipsised rather than allowed to grow,
+ * which would otherwise squeeze the status text or overflow the 25px bar.
+ */
+#target-url {
+  margin-left: auto;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}

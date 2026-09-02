@@ -16,5 +16,10 @@ contextBridge.exposeInMainWorld('browserAPI', {
 
   onUrlChanged: (callback: (url: string) => void) => {
     ipcRenderer.on('url-changed', (_event, url) => callback(url))
+  },
+
+  /* Empty string means the pointer left the link; see update-target-url in windows.ts */
+  onTargetUrlChanged: (callback: (url: string) => void) => {
+    ipcRenderer.on('target-url-changed', (_event, url) => callback(url))
   }
 })

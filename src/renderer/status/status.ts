@@ -1,16 +1,18 @@
 class StatusController {
   private statusIcon: HTMLElement
   private statusText: HTMLElement
+  private targetUrl: HTMLElement
 
   constructor() {
     this.statusIcon = document.getElementById('status-icon') as HTMLElement
     this.statusText = document.getElementById('status-text') as HTMLElement
+    this.targetUrl = document.getElementById('target-url') as HTMLElement
 
     this.setupEventListeners()
   }
 
   /*
-   * Every state comes from navigation-update alone. The url-changed channel is
+   * The status text comes from navigation-update alone. The url-changed channel is
    * deliberately not used here: it is sent just before a navigation-update, so
    * anything it rendered would immediately be overwritten by that message.
    */
@@ -23,6 +25,15 @@ class StatusController {
       } else {
         this.setReady()
       }
+    })
+
+    /*
+     * Chromium sends an empty string when the pointer leaves the link, so the
+     * same assignment both shows and clears the URL - there is no hover-ended
+     * message to handle separately.
+     */
+    window.browserAPI.onTargetUrlChanged((url: string) => {
+      this.targetUrl.textContent = url
     })
   }
 
