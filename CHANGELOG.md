@@ -5,6 +5,12 @@ All notable changes to MeshBrowser are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-09-02
+
+### Fixed
+
+- The browser chrome lost its padding and background colour in packaged builds. `common.css` and each view's own stylesheet both defined `body` at the same specificity, and while the dev server serves them in source order — the view's sheet last — Vite bundles the shared CSS into a chunk it emits *after* the per-view one, reversing the cascade. The status bar's indicator sat flush against the left edge, the hovered URL flush against the right, and both bars took the wrong background. The defaults in `common.css` are now scoped with `:where()`, giving them zero specificity so a view's own rule always wins regardless of bundle order. Present since 1.1.0 and visible only in a built app, which is why it survived dev testing.
+
 ## [1.2.0] - 2026-09-02
 
 ### Added
