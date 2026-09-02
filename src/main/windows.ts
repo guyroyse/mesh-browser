@@ -1,7 +1,7 @@
 import { BrowserWindow, WebContentsView, ipcMain, nativeTheme } from 'electron'
 
 import { config } from './config'
-import { preloadPath, navigationUrl, statusUrl } from './paths'
+import { preloadPath, navigationUrl, statusUrl, iconPath } from './paths'
 import { contentBackground } from './theme'
 import type { NavigationUpdate } from '../shared/ipc'
 
@@ -32,6 +32,9 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   mainWindow = new BrowserWindow({
     width: config.window.width,
     height: config.window.height,
+    /* Linux has no icon anywhere else; Windows and macOS ignore this and take
+     * theirs from the executable and the bundle that electron-builder signs. */
+    icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true

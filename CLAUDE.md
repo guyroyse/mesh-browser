@@ -43,7 +43,7 @@ src/
 │   ├── config.ts               # Tunable settings (future config-file home)
 │   ├── theme.ts                # Content-view colours mirroring theme.css
 │   ├── lifecycle.ts            # Startable / Stoppable / Lifecycle contracts
-│   ├── paths.ts                # Renderer URLs + preload path (environment-derived)
+│   ├── paths.ts                # Renderer URLs, preload + icon paths (environment-derived)
 │   ├── windows.ts              # Window/view creation, IPC handlers, view events
 │   ├── protocols/               # Protocol layer: schemes, clients, handlers
 │   │   ├── protocols.ts        # Three lifecycle phases; owns the clients
@@ -215,6 +215,12 @@ Links must be torn down **before** `rns.stop()`: `teardown()` sends LINKCLOSE
 and needs the interface still up, and an ACTIVE link's 1-second watchdog is not
 cancelled by `stop()`. Getting this wrong hangs the quit rather than failing
 loudly.
+
+## Application Icon
+
+`build/icon.png` is source, not build output - it is electron-builder's
+`buildResources`, so it does not belong in `.gitignore` beside `out/` and
+`dist/`.
 
 # Development Commands
 
