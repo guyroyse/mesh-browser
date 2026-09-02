@@ -3,8 +3,17 @@
   box-sizing: border-box;
 }
 
-/* Common utility classes */
-body {
+/*
+ * Page defaults, not overrides. :where() drops these to zero specificity so a
+ * view's own `body` rule always wins, whatever order the bundler emits the
+ * stylesheets in.
+ *
+ * This matters in production and not in dev: the dev server serves the source
+ * <link> tags in order, with the view's own stylesheet last, but Vite bundles
+ * the shared CSS into a chunk it emits *after* the per-view one. That silently
+ * reset the status bar's padding and background in every packaged build.
+ */
+:where(body) {
   margin: 0;
   padding: 0;
   color: var(--text-primary);
