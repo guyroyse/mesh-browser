@@ -18,11 +18,15 @@
   --shadow-color: rgba(0, 0, 0, 0.1);
   --glow-color: rgba(0, 122, 204, 0.6);
 
-  /* Status icon colors */
+  /* Status icon colors - amber for loading completes the traffic-light triad.
+     --status-loading-glow is the same colour as an unwrapped RGB triple, because
+     pulse-glow in common.css feeds it to rgba(); the two must change together or
+     the dot pulses in the old colour. Amber is darkened here to 4.02:1 against
+     --bg-secondary, since a saturated yellow at 8px vanishes on a light bar. */
   --status-ready: #28a745;
-  --status-loading: #007acc;
+  --status-loading: #b26a00;
   --status-error: #dc3545;
-  --status-loading-glow: 0, 122, 204;
+  --status-loading-glow: 178, 106, 0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,10 +42,11 @@
     --shadow-color: rgba(0, 0, 0, 0.3);
     --glow-color: rgba(79, 195, 247, 0.6);
 
-    /* Status icon colors - same in dark mode */
+    /* Status icon colors - loading brightens to full amber, which a dark bar can
+       carry without the darkening the light theme needs (8.45:1 on --bg-secondary). */
     --status-ready: #28a745;
-    --status-loading: #4fc3f7;
+    --status-loading: #ffc107;
     --status-error: #dc3545;
-    --status-loading-glow: 79, 195, 247;
+    --status-loading-glow: 255, 193, 7;
   }
 }
