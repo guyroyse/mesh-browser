@@ -6,6 +6,13 @@ import { contentBackground } from './theme'
 import type { NavigationUpdate } from '../shared/ipc'
 
 /*
+ * What the window is called before any page names itself. Electron otherwise
+ * falls back to package.json's `name`, which names the npm package rather than
+ * the product - which is why the title bar read "mesh-browser".
+ */
+const APP_TITLE = 'MeshBrowser'
+
+/*
  * One window's worth of views. Multi-window will need these per window, with
  * IPC routed by event.sender to the calling window's content view - see
  * setupWindowHandlers.
@@ -35,6 +42,9 @@ export async function createMainWindow(): Promise<BrowserWindow> {
     /* Linux has no icon anywhere else; Windows and macOS ignore this and take
      * theirs from the executable and the bundle that electron-builder signs. */
     icon: iconPath,
+    /* The window loads no document of its own - it is only a frame around the
+       three views - so nothing here competes with setWindowTitle */
+    title: APP_TITLE,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true
@@ -150,6 +160,10 @@ function setupViewEvents() {
   webContentsView.webContents.on('did-navigate', (_event, url) => {
     navigationView.webContents.send('url-changed', url)
     sendNavigationUpdate()
+
+    /* A page with no <title> of its own never fires page-title-updated, so the
+       title is taken at the commit too or the last page's would linger */
+    setWindowTitle(webContentsView.webContents.getTitle())
   })
 
   webContentsView.webContents.on('did-navigate-in-page', (_event, url) => {
@@ -183,6 +197,16 @@ function setupViewEvents() {
   webContentsView.webContents.on('update-target-url', (_event, url) => {
     statusView.webContents.send('target-url-changed', url)
   })
+
+  webContentsView.webContents.on('page-title-updated', (_event, title) => {
+    setWindowTitle(title)
+  })
+}
+
+/* Whatever Chromium reports for the page - a real <title>, or the address it
+   synthesises when there is none. Empty only before anything has loaded. */
+function setWindowTitle(pageTitle: string) {
+  mainWindow.setTitle(pageTitle ? `${APP_TITLE} - ${pageTitle}` : APP_TITLE)
 }
 
 /**
