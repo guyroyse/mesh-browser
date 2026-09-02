@@ -5,13 +5,14 @@ All notable changes to MeshBrowser are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-09-02
 
 ### Added
 
 - Hovering a link in a mesh page now shows its URL in the status bar, right-aligned and truncated so a long `rweb://` address cannot displace the status text.
 - The window title reads `MeshBrowser - <page title>`, falling back to `MeshBrowser` before anything has loaded.
-- Application icon wiring: `build/icon.png` is derived by electron-builder into the Windows `.ico`, macOS `.icns`, and Linux icon set, and staged into the packaged resources so Linux can read it at runtime. The current image is a placeholder.
+- An application icon, replacing Electron's default. The mark is an orrery — nodes held at tiers of remove on concentric orbits — in the amber and near-black already used by the browser chrome.
+- Icon wiring: `build/icon.png` is derived by electron-builder into the Windows `.ico`, macOS `.icns`, and Linux icon set, and staged into the packaged resources so Linux can read it at runtime. `build/icons/` carries per-size renders, using a reduced form of the mark at 32px and below where the full one cannot resolve. That reduction currently reaches Linux only; Windows and macOS still downscale the full mark.
 
 ### Changed
 
