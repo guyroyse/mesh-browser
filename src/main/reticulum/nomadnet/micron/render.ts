@@ -56,7 +56,7 @@ export function renderBlocks(blocks: Block[], context: RenderContext): string {
 
       case 'divider':
         setDepth(block.depth)
-        html.push(dividerHtml(block.char))
+        html.push(dividerHtml(block.char, block.style))
         break
 
       case 'heading': {
@@ -194,10 +194,13 @@ function alignAttr(align: Align): string {
 /**
  * A divider fills the line with its glyph, repeated and clipped.
  *
- * Deliberately not an <hr>: a divider occupies a whole row in a terminal, and
- * a 1px rule would sit a fraction of a row tall and shift everything below it
+ * Deliberately not an <hr>: a divider is a row of characters drawn in whatever
+ * colour is in effect, so it takes the current style like any other run. A 1px
+ * rule would also sit a fraction of a row tall and shift everything below it
  * off the character grid the page was drawn on.
  */
-function dividerHtml(char: string): string {
-  return `<div class="divider" aria-hidden="true">${escapeHtml(char.repeat(DIVIDER_WIDTH))}</div>`
+function dividerHtml(char: string, style: Style): string {
+  const glyphs = styled(escapeHtml(char.repeat(DIVIDER_WIDTH)), style)
+
+  return `<div class="divider" aria-hidden="true">${glyphs}</div>`
 }

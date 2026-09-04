@@ -45,7 +45,7 @@ export type Run =
 export type Block =
   | { kind: 'paragraph'; depth: number; align: Align; runs: Run[] }
   | { kind: 'heading'; depth: number; align: Align; runs: Run[] }
-  | { kind: 'divider'; depth: number; char: string }
+  | { kind: 'divider'; depth: number; char: string; style: Style }
   | { kind: 'literal'; lines: string[] }
 
 interface State extends Style {
@@ -137,7 +137,7 @@ function parseLine(line: string, state: State): Block | null {
   if (line.startsWith('-')) {
     const char = dividerChar(line)
 
-    return { kind: 'divider', depth: state.depth, char }
+    return { kind: 'divider', depth: state.depth, char, style: snapshot(state) }
   }
 
   if (line.startsWith('>')) {

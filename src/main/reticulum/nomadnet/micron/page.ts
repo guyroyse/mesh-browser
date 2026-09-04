@@ -33,6 +33,9 @@ const STYLES = `
     --ink: #d6d6d0;
     --rule: #4b4b54;
     --dead: #6f6f79;
+    --head-1: #e8e8e2;
+    --head-2: #b8b8b2;
+    --head-3: #909089;
   }
   body {
     margin: 0;
@@ -50,11 +53,18 @@ const STYLES = `
      in a terminal they occupy the same cell as everything else, and growing
      them here would push the rest of the page off the grid. */
   h1, h2, h3, p, pre { font-size: 1em; margin: 0; }
-  h1, h2, h3 { font-weight: bold; }
+  /* A section heading is a bar of inverted text, dimming with depth, which is
+     what NomadNet's own theme draws and what page authors lay out against.
+     A page that sets its own colours overrides this from the run's own style. */
+  h1, h2, h3 { font-weight: bold; color: var(--ground); }
+  h1 { background: var(--head-1); }
+  h2 { background: var(--head-2); }
+  h3 { background: var(--head-3); }
   p { white-space: pre-wrap; }
   pre { white-space: pre; overflow-x: auto; }
-  section { border-left: 1px solid var(--rule); }
-  .divider { overflow: hidden; white-space: nowrap; color: var(--rule); }
+  /* Sections indent and nothing more - a rule down the margin is not something
+     NomadNet draws, and it reads as part of the page's own art */
+  .divider { overflow: hidden; white-space: nowrap; }
   a { color: inherit; text-underline-offset: 2px; }
   .dead-link { color: var(--dead); text-decoration: line-through; cursor: not-allowed; }
   /* No border or padding: either would make the field taller than its row */
