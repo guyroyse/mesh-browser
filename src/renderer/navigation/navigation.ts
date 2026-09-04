@@ -49,14 +49,20 @@ class NavigationController {
 
   async navigate(url: string) {
     /*
-     * A bare destination hash is genuinely ambiguous - rweb and nomadnet name
-     * endpoints with identically shaped 32-hex hashes, and nothing in the
-     * input says which. rweb stays the default; anything else needs its
-     * scheme typed. Resolving it from announces is future work.
+     * A bare destination hash is ambiguous - rweb and nomadnet name endpoints
+     * with identically shaped 32-hex hashes, and nothing in the input says
+     * which. It defaults to nomadnet because that is what a bare hash already
+     * means everywhere else in the ecosystem: NomadNet addresses a node by
+     * hash alone, and hashes passed around on forums and in announce lists are
+     * node addresses. Nothing circulates a bare hash meaning rserver.
+     *
+     * Anything else needs its scheme typed. A wrong guess currently costs the
+     * full link-establishment timeout; deriving the right scheme from the
+     * destination's identity is a future task.
      */
     if (!url.includes('://')) {
       if (!url.startsWith('about:')) {
-        url = `rweb://${url}`
+        url = `nomadnet://${url}`
       }
     }
 

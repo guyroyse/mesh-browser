@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The address bar placeholder names both schemes. A bare destination hash still opens as `rweb://`, since both schemes use the same 32-character hashes.
+- A destination hash typed on its own now opens as `nomadnet://` rather than `rweb://`. Both schemes use identically shaped 32-character hashes, so a bare one is ambiguous — but outside this browser a bare hash already means a NomadNet node, which is how they are shared. Reaching an RWeb server by hash alone now needs `rweb://` typed in front of it.
 
 ### Fixed
 
