@@ -397,7 +397,25 @@ function buildLink(body: string, style: Style): Run {
     return { kind: 'link', text: parts[0], target: parts[0], style }
   }
 
-  return { kind: 'link', text: parts[0], target: parts[1], style }
+  return { kind: 'link', text: parts[0], target: withAnchor(parts[1], parts[2]), style }
+}
+
+/**
+ * A link into a section of another node's page carries its anchor in the field
+ * slot, as `anchor=name`, rather than as a fragment on the target.
+ *
+ * Folding it onto the target here means resolveTarget never has to know: the
+ * fragment rides the URL and Chromium does the rest. Any other field spec is a
+ * form submission, which is not implemented.
+ */
+function withAnchor(target: string, fields: string | undefined): string {
+  if (!fields) return target
+
+  const anchor = /^anchor=(.+)$/.exec(fields)
+
+  if (!anchor) return target
+
+  return `${target}#${anchor[1]}`
 }
 
 /**

@@ -27,6 +27,7 @@ export interface RenderContext {
 
 export function renderBlocks(blocks: Block[], context: RenderContext): string {
   const html: string[] = []
+  const usedIds = new Set<string>()
   let openSections = 0
 
   const setDepth = (depth: number): void => {
@@ -66,8 +67,14 @@ export function renderBlocks(blocks: Block[], context: RenderContext): string {
            other row. Deeper sections keep indenting. */
         const level = Math.min(Math.max(block.depth, 1), 3)
 
+        /* Headings anchor themselves: micron pages link to a section by the
+           slug of its heading text, without the page declaring an anchor */
+        const id = uniqueSlug(runsText(block.runs), usedIds)
+        const idAttr = id ? ` id="${escapeHtml(id)}"` : ''
+
         html.push(
-          `<h${level}${alignAttr(block.align)}>${renderRuns(block.runs, context)}</h${level}>`
+          `<h${level}${idAttr}${alignAttr(block.align)}>` +
+            `${renderRuns(block.runs, context)}</h${level}>`
         )
         break
       }
@@ -88,6 +95,38 @@ export function renderBlocks(blocks: Block[], context: RenderContext): string {
   setDepth(0)
 
   return html.join('\n')
+}
+
+/** The visible text of a run list, for slugs and titles. */
+export function runsText(runs: Run[]): string {
+  return runs
+    .map((run) => (run.kind === 'text' || run.kind === 'link' ? run.text : ''))
+    .join('')
+    .trim()
+}
+
+/**
+ * Slugify a heading the way micron's auto-anchors do: lowercased, runs of
+ * anything that is not a letter or digit collapsed to a single dash.
+ */
+function uniqueSlug(text: string, used: Set<string>): string {
+  const base = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  if (!base) return ''
+
+  /* Two headings can share a text; the first keeps the bare slug so the common
+     case still matches what a page links to */
+  let slug = base
+  let n = 2
+
+  while (used.has(slug)) slug = `${base}-${n++}`
+
+  used.add(slug)
+
+  return slug
 }
 
 function renderRuns(runs: Run[], context: RenderContext): string {

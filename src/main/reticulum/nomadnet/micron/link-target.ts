@@ -56,13 +56,26 @@ export function resolveTarget(target: string, currentDestHashHex: string): Resol
     return { href: trimmed }
   }
 
-  /* In-page anchors, in both spellings */
+  /*
+   * In-page anchor. Only '#' means an anchor in a link *target* - ':' is the
+   * tag that *defines* one in running text, which is a different position
+   * entirely. Reading ':' as an anchor here turned every same-node link below
+   * into a fragment.
+   */
   if (trimmed.startsWith('#')) return { href: trimmed }
-  if (trimmed.startsWith(':')) return { href: `#${trimmed.slice(1)}` }
 
-  /* A path on this node. Relative paths are left relative on purpose: the
-     scheme is registered `standard`, so Chromium resolves them against the
-     page's own URL exactly as it would on the web. */
+  /*
+   * A path on this node, in either spelling. Micron writes the same-node form
+   * as ':/page/foo.mu' - the destination-hash slot left empty, with its
+   * separator still there - and pages also use a plain '/page/foo.mu'.
+   */
+  if (trimmed.startsWith(':')) {
+    return { href: `nomadnet://${currentDestHashHex}${absolute(trimmed.slice(1))}` }
+  }
+
+  /* Relative paths are left relative on purpose: the scheme is registered
+     `standard`, so Chromium resolves them against the page's own URL exactly
+     as it would on the web. */
   if (trimmed.startsWith('/')) {
     return { href: `nomadnet://${currentDestHashHex}${trimmed}` }
   }
@@ -72,8 +85,10 @@ export function resolveTarget(target: string, currentDestHashHex: string): Resol
   return { unsupported: `unsupported link target: ${trimmed}` }
 }
 
-/** A cross-node target's path is always rooted, however the page wrote it. */
+/** A target's path is always rooted, however the page wrote it. */
 function absolute(path: string): string {
+  if (!path) return DEFAULT_PAGE
+
   return path.startsWith('/') ? path : `/${path}`
 }
 

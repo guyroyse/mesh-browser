@@ -13,6 +13,7 @@
 
 import { escapeHtml } from '../../../html'
 import type { Block } from './parse'
+import { runsText } from './render'
 
 /**
  * Micron pages cannot script, so nothing here needs to. Inline styles are the
@@ -89,10 +90,7 @@ function firstHeadingText(blocks: Block[]): string | null {
   for (const block of blocks) {
     if (block.kind !== 'heading') continue
 
-    const text = block.runs
-      .map((run) => (run.kind === 'text' || run.kind === 'link' ? run.text : ''))
-      .join('')
-      .trim()
+    const text = runsText(block.runs)
 
     if (text) return text
   }
