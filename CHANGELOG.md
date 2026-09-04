@@ -5,12 +5,12 @@ All notable changes to MeshBrowser are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0] - 2026-09-04
 
 ### Added
 
 - NomadNet page browsing, over a new `nomadnet://` scheme. Links between NomadNet and RWeb pages resolve and render in both directions.
-- A renderer for micron, the markup NomadNet pages are written in. Pages render monospace on a character grid, the way their authors drew them, and cannot run scripts.
+- A renderer for micron, the markup NomadNet pages are written in. Pages render monospace on a character grid, the way their authors drew them, and cannot run scripts. The styling follows what other NomadNet clients draw — light text on a dark ground, section headings as bars — so a page looks the way its author laid it out.
 - Micron links resolve to full URLs, including links to a page on another node and links out to the web. A link the browser cannot follow — an LXMF address, say — is shown struck through rather than left to fail.
 
 ### Changed
