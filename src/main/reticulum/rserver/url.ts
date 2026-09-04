@@ -4,11 +4,7 @@
  * Pure — no Reticulum dependency beyond hex decoding.
  */
 
-import { fromHex } from '@reticulum/core'
-
-/* RNS destination hashes are exactly 16 bytes / 32 hex characters */
-const DEST_HASH_CHARS = 32
-const DEST_HASH_PATTERN = /^[0-9a-f]{32}$/
+import { parseDestHash } from '../destination-hash'
 
 export interface RwebTarget {
   destHash: Uint8Array
@@ -33,8 +29,6 @@ export function parseRwebUrl(url: URL): RwebTarget {
     throw new Error(`rweb:// URLs cannot carry a port, got :${url.port}`)
   }
 
-  validateDestHash(destHashHex)
-
   /*
    * Preserve the query string - rserver may care about it. The fragment is
    * deliberately dropped; it never leaves the client.
@@ -46,19 +40,6 @@ export function parseRwebUrl(url: URL): RwebTarget {
    */
   const path = `${url.pathname || '/'}${url.search}`
 
-  return { destHash: fromHex(destHashHex), destHashHex, path }
+  return { ...parseDestHash(destHashHex), path }
 }
 
-function validateDestHash(destHashHex: string): void {
-  if (DEST_HASH_PATTERN.test(destHashHex)) return
-
-  /* Length is the mistake worth naming precisely - a truncated paste is the
-     common case, and "got 31" is more use than "invalid format" */
-  if (destHashHex.length !== DEST_HASH_CHARS) {
-    throw new Error(
-      `Destination hash must be ${DEST_HASH_CHARS} hex characters, got ${destHashHex.length}`
-    )
-  }
-
-  throw new Error(`Invalid destination hash format: ${destHashHex}`)
-}

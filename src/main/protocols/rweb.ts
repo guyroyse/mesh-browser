@@ -8,8 +8,8 @@
 
 import dedent from 'dedent'
 
-import type { ReticulumClient } from '../reticulum/client'
-import { parseRwebUrl } from '../reticulum/url'
+import type { RserverClient } from '../reticulum/rserver/client'
+import { parseRwebUrl } from '../reticulum/rserver/url'
 
 export const rwebScheme = {
   scheme: 'rweb',
@@ -30,7 +30,7 @@ export const rwebScheme = {
  * arrives as an argument instead of being reached for, and the returned
  * handler is an ordinary function that can be called directly.
  */
-export function createRwebHandler(client: ReticulumClient) {
+export function createRwebHandler(client: RserverClient) {
   return async function handleRequest(request: Request): Promise<Response> {
     console.log(`rweb: fetching ${request.url}`)
 

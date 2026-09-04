@@ -10,11 +10,16 @@
 import { protocol } from 'electron'
 
 import type { Startable, Stoppable } from '../lifecycle'
-import { ReticulumClient } from '../reticulum/client'
+import { RserverClient } from '../reticulum/rserver/client'
+import { ReticulumStack } from '../reticulum/stack'
 import { createRwebHandler, rwebScheme } from './rweb'
 
-/** One client per protocol for the life of the app. */
-const reticulumClient = new ReticulumClient()
+/*
+ * One Reticulum stack shared by every protocol that rides it, and one client
+ * per protocol, for the life of the app.
+ */
+const stack = new ReticulumStack()
+const rserverClient = new RserverClient(stack)
 
 /** Declare schemes to Chromium. Must run *before* app-ready. */
 export function registerProtocolSchemes(): void {
@@ -23,14 +28,24 @@ export function registerProtocolSchemes(): void {
 
 /** Attach handlers and bring clients up. Must run *after* app-ready. */
 export function setupProtocols(): void {
-  protocol.handle(rwebScheme.scheme, createRwebHandler(reticulumClient))
+  protocol.handle(rwebScheme.scheme, createRwebHandler(rserverClient))
 
-  warmUp('Reticulum', reticulumClient)
+  warmUp('rserver', rserverClient)
 }
 
-/** Stop every client. Bounded by the caller - see config.shutdownTimeout. */
+/**
+ * Stop every client, then the stack. Bounded by the caller - see
+ * config.shutdownTimeout.
+ *
+ * The order is load-bearing: a client's teardown sends LINKCLOSE and needs the
+ * interface still up, and an ACTIVE link's 1-second watchdog is not cancelled
+ * by stopping the stack. Getting this wrong hangs the quit rather than failing
+ * loudly.
+ */
 export async function teardownProtocols(): Promise<void> {
-  await shutDown('Reticulum', reticulumClient)
+  await shutDown('rserver', rserverClient)
+
+  await shutDown('Reticulum stack', stack)
 }
 
 /**
