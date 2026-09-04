@@ -10,27 +10,53 @@
 import { protocol } from 'electron'
 
 import type { Startable, Stoppable } from '../lifecycle'
-import { ReticulumClient } from '../reticulum/client'
+import { NomadnetClient } from '../reticulum/nomadnet/client'
+import { RserverClient } from '../reticulum/rserver/client'
+import { ReticulumStack } from '../reticulum/stack'
+import { createNomadnetHandler, nomadnetScheme } from './nomadnet'
 import { createRwebHandler, rwebScheme } from './rweb'
 
-/** One client per protocol for the life of the app. */
-const reticulumClient = new ReticulumClient()
+/*
+ * One Reticulum stack shared by every protocol that rides it, and one client
+ * per protocol, for the life of the app.
+ */
+const stack = new ReticulumStack()
+const rserverClient = new RserverClient(stack)
+const nomadnetClient = new NomadnetClient(stack)
 
 /** Declare schemes to Chromium. Must run *before* app-ready. */
 export function registerProtocolSchemes(): void {
-  protocol.registerSchemesAsPrivileged([rwebScheme])
+  protocol.registerSchemesAsPrivileged([rwebScheme, nomadnetScheme])
 }
 
 /** Attach handlers and bring clients up. Must run *after* app-ready. */
 export function setupProtocols(): void {
-  protocol.handle(rwebScheme.scheme, createRwebHandler(reticulumClient))
+  protocol.handle(rwebScheme.scheme, createRwebHandler(rserverClient))
+  protocol.handle(nomadnetScheme.scheme, createNomadnetHandler(nomadnetClient))
 
-  warmUp('Reticulum', reticulumClient)
+  /* Both clients share one stack, so the second warm-up is a no-op rather than
+     a second connection - it is here so that adding a protocol stays a
+     symmetrical two lines */
+  warmUp('rserver', rserverClient)
+  warmUp('NomadNet', nomadnetClient)
 }
 
-/** Stop every client. Bounded by the caller - see config.shutdownTimeout. */
+/**
+ * Stop every client, then the stack. Bounded by the caller - see
+ * config.shutdownTimeout.
+ *
+ * The order is load-bearing: a client's teardown sends LINKCLOSE and needs the
+ * interface still up, and an ACTIVE link's 1-second watchdog is not cancelled
+ * by stopping the stack. Getting this wrong hangs the quit rather than failing
+ * loudly.
+ */
 export async function teardownProtocols(): Promise<void> {
-  await shutDown('Reticulum', reticulumClient)
+  await Promise.all([
+    shutDown('rserver', rserverClient),
+    shutDown('NomadNet', nomadnetClient)
+  ])
+
+  await shutDown('Reticulum stack', stack)
 }
 
 /**

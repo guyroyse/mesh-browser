@@ -8,8 +8,8 @@
 
 import { ContextType, type Link, Packet, PacketType } from '@reticulum/core'
 
-import { config } from '../config'
-import { rejectAfter } from './async'
+import { config } from '../../config'
+import { rejectAfter } from '../async'
 import type { RwebTarget } from './url'
 
 /**
@@ -74,8 +74,8 @@ export async function requestResource(link: Link, target: RwebTarget): Promise<U
     return await Promise.race([
       replied,
       rejectAfter(
-        config.reticulum.responseTimeout,
-        `No response received within ${config.reticulum.responseTimeout / 1000}s for ${target.path}`,
+        config.reticulum.rserver.responseTimeout,
+        `No response received within ${config.reticulum.rserver.responseTimeout / 1000}s for ${target.path}`,
         cleanup.signal
       )
     ])

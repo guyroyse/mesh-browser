@@ -33,7 +33,6 @@ export const config = {
      */
     pathDiscoveryTimeout: 120_000,
     linkEstablishmentTimeout: 120_000,
-    responseTimeout: 300_000,
 
     /* How long an unused link is kept before being closed */
     linkIdleTimeout: 60_000,
@@ -46,17 +45,41 @@ export const config = {
     pathFailureTtl: 30_000,
 
     /*
-     * The rserver protocol cannot match a response to a request, so a link
-     * carries one request at a time. This is how many run in parallel per
-     * destination.
-     */
-    maxLinksPerDestination: 4,
-
-    /*
      * reticulum-js rejects Resource advertisements over 32 MB as a bomb
      * defense. Python RNS peers apply no such cap, so leaving the default would
      * silently break large downloads that work today.
      */
-    maxResourceSize: 256 * 1024 * 1024
+    maxResourceSize: 256 * 1024 * 1024,
+
+    /* Per-protocol tunables. The settings above describe the transport and are
+       shared; these describe how one protocol uses it. */
+
+    rserver: {
+      responseTimeout: 300_000,
+
+      /*
+       * The rserver protocol cannot match a response to a request, so a link
+       * carries one request at a time. This is how many run in parallel per
+       * destination.
+       */
+      maxLinksPerDestination: 4
+    },
+
+    nomadnet: {
+      /*
+       * Passed to every link.request() explicitly, because reticulum-js
+       * defaults to (rtt * 6 + 4.5) seconds - a handful of seconds on a fast
+       * path, which a LoRa hop or a subprocess-backed dynamic page blows
+       * through instantly.
+       */
+      requestTimeout: 300_000,
+
+      /*
+       * RNS REQUESTs carry a request id, so many can share one link safely.
+       * This bound is about throughput, not correctness: each Resource runs
+       * its own flow-control window over the same link's bandwidth.
+       */
+      maxConcurrentRequests: 4
+    }
   }
 }
