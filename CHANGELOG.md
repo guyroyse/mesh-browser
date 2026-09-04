@@ -5,6 +5,28 @@ All notable changes to MeshBrowser are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- NomadNet page browsing, over a new `nomadnet://` scheme. Links between NomadNet and RWeb pages resolve and render in both directions.
+- A renderer for micron, the markup NomadNet pages are written in. Pages render monospace on a character grid, the way their authors drew them, and cannot run scripts.
+- Micron links resolve to full URLs, including links to a page on another node. A link the browser cannot follow — an email address, a web URL — is shown struck through rather than left to fail.
+
+### Changed
+
+- The address bar placeholder names both schemes. A bare destination hash still opens as `rweb://`, since both schemes use the same 32-character hashes.
+
+### Fixed
+
+- Connections to a node that is slow or unreachable are now closed when they time out. They were left open instead, tying up resources here and on the far end until that node gave up on its own.
+
+### Known limitations
+
+- Downloading files from NomadNet nodes is not supported, and says so.
+- Micron form fields are shown but cannot be filled in or submitted.
+- Browsing is anonymous, so pages a node operator has restricted will refuse to load.
+
 ## [1.2.1] - 2026-09-02
 
 ### Fixed
