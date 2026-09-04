@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - NomadNet page browsing, over a new `nomadnet://` scheme. Links between NomadNet and RWeb pages resolve and render in both directions.
 - A renderer for micron, the markup NomadNet pages are written in. Pages render monospace on a character grid, the way their authors drew them, and cannot run scripts.
-- Micron links resolve to full URLs, including links to a page on another node. A link the browser cannot follow — an email address, a web URL — is shown struck through rather than left to fail.
+- Micron links resolve to full URLs, including links to a page on another node and links out to the web. A link the browser cannot follow — an LXMF address, say — is shown struck through rather than left to fail.
 
 ### Changed
 

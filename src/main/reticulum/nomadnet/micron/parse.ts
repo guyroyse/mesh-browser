@@ -214,9 +214,15 @@ function parseInline(line: string, state: State): Run[] {
 
     const tag = line[i + 1]
 
-    /* A trailing lone backtick is just a backtick */
+    /*
+     * A backtick at end of line closes whatever the line opened. Pages lean on
+     * this heavily - `Fccc+ `[Label`target]` sets a colour, draws a link and
+     * resets, all on one line - and emitting it as text put a stray backtick
+     * after every such link.
+     */
     if (tag === undefined) {
-      text += '`'
+      flush()
+      resetAll(state)
       i++
       continue
     }

@@ -13,9 +13,16 @@
 
 const DEST_HASH = /^[0-9a-f]{32}$/i
 
-/* Schemes a NomadNet page may legitimately point at, and that the browser can
-   actually follow. rweb is the other half of the cross-protocol story. */
-const FOLLOWABLE_SCHEMES = ['rweb://', 'nomadnet://']
+/*
+ * Schemes the browser can actually follow: the two mesh protocols, plus the
+ * ordinary web, which Chromium loads directly. NomadNet pages link out to the
+ * web constantly - a project's repository, a mesh group's site - and striking
+ * those through would be wrong twice over, since they work.
+ *
+ * Everything absent from this list stays inert, `lxmf@` included: there is no
+ * messaging in MeshBrowser for such a link to open.
+ */
+const FOLLOWABLE_SCHEMES = ['rweb://', 'nomadnet://', 'https://', 'http://']
 
 const DEFAULT_PAGE = '/page/index.mu'
 
