@@ -29,6 +29,14 @@ export function parseNomadnetUrl(url: URL): NomadnetTarget {
   /*
    * nomadnet has no notion of a port - a destination hash names an endpoint
    * outright. Rejecting beats silently ignoring what the user typed.
+   *
+   * An *empty* port must keep passing, and the test is `url.port` rather than
+   * anything stricter for that reason. NomadNet addresses destinations as
+   * `<hash>:/page/foo.mu`, so a pasted or MeshChat-shaped URL arrives here as
+   * `nomadnet://<hash>:/page/foo.mu`. The URL parser reads that colon as an
+   * empty port and canonicalises it away, leaving exactly the URL we would
+   * have written ourselves - the address bar even self-corrects on display.
+   * Tightening this check would break pasting the format everyone else uses.
    */
   if (url.port) {
     throw new Error(`nomadnet:// URLs cannot carry a port, got :${url.port}`)
