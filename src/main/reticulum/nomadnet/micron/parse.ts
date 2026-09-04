@@ -150,6 +150,8 @@ function parseLine(line: string, state: State): Block | null {
 
     const runs = parseInline(line.slice(depth), state)
 
+    if (isTagsOnly(line, runs)) return null
+
     return { kind: 'heading', depth, align: state.align, background: state.bg, runs }
   }
 
@@ -159,10 +161,14 @@ function parseLine(line: string, state: State): Block | null {
 
     const runs = parseInline(line.slice(1), state)
 
+    if (isTagsOnly(line, runs)) return null
+
     return { kind: 'paragraph', depth: 0, align: state.align, background: state.bg, runs }
   }
 
   const runs = parseInline(line, state)
+
+  if (isTagsOnly(line, runs)) return null
 
   /*
    * The background in effect belongs to the whole row, not just the text on
@@ -171,6 +177,17 @@ function parseLine(line: string, state: State): Block | null {
    * empty line still paints.
    */
   return { kind: 'paragraph', depth: state.depth, align: state.align, background: state.bg, runs }
+}
+
+/**
+ * True for a line that held markup but no content, which occupies no row.
+ *
+ * A line of pure tags - `a on its own to restore alignment, say - changes the
+ * state and then gets out of the way. An *empty* line is different: that is a
+ * blank row the author asked for, and it keeps its height.
+ */
+function isTagsOnly(line: string, runs: Run[]): boolean {
+  return line.length > 0 && runs.length === 0
 }
 
 /**
