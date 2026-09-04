@@ -210,14 +210,26 @@ function blockAttr(align: Align, background: string | null): string {
 }
 
 /**
- * A divider fills the line with its glyph, repeated and clipped.
+ * A divider, in whichever of its two forms the page asked for.
  *
- * Deliberately not an <hr>: a divider is a row of characters drawn in whatever
- * colour is in effect, so it takes the current style like any other run. A 1px
- * rule would also sit a fraction of a row tall and shift everything below it
- * off the character grid the page was drawn on.
+ * A bare `-` is a rule: a border in the current foreground colour, with the
+ * current background bled around it so the gap it opens matches the block it
+ * sits in. A glyph divider is a row of characters, styled like any other run.
+ *
+ * Both take the colours in effect - a divider is drawn in the page's own
+ * palette, not the browser's.
  */
-function dividerHtml(char: string, style: Style): string {
+function dividerHtml(char: string | null, style: Style): string {
+  if (char === null) {
+    const border = style.fg ?? 'var(--ink)'
+    const bleed = style.bg ?? 'var(--ground)'
+
+    return (
+      `<hr style="all:revert;border-color:${border};margin:0.5em 0;` +
+      `box-shadow:0 0 0 0.5em ${bleed}">`
+    )
+  }
+
   const glyphs = styled(escapeHtml(char.repeat(DIVIDER_WIDTH)), style)
 
   return `<div class="divider" aria-hidden="true">${glyphs}</div>`

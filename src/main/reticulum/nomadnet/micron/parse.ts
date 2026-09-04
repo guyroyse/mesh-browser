@@ -45,7 +45,8 @@ export type Run =
 export type Block =
   | { kind: 'paragraph'; depth: number; align: Align; background: string | null; runs: Run[] }
   | { kind: 'heading'; depth: number; align: Align; background: string | null; runs: Run[] }
-  | { kind: 'divider'; depth: number; char: string; style: Style }
+  /** `char` is null for a bare `-`, which draws a rule rather than a row of glyphs. */
+  | { kind: 'divider'; depth: number; char: string | null; style: Style }
   | { kind: 'literal'; lines: string[] }
 
 interface State extends Style {
@@ -173,19 +174,22 @@ function parseLine(line: string, state: State): Block | null {
 }
 
 /**
- * `-x` repeats x; anything else, `-` alone included, uses the default glyph.
+ * `-` alone draws a rule; `-x` repeats x; anything longer repeats the default
+ * glyph.
  *
- * The two-character test is exact: a longer line beginning with a dash is not
- * a three-glyph divider, it is a default one.
+ * The lengths are exact: a line of three characters beginning with a dash is
+ * not a two-glyph divider, it is a default one.
  */
-function dividerChar(line: string): string {
-  if ([...line].length !== 2) return DIVIDER_CHAR
+function dividerChar(line: string): string | null {
+  const chars = [...line]
 
-  const char = [...line][1]
+  if (chars.length === 1) return null
 
-  if (char.codePointAt(0)! < 32) return DIVIDER_CHAR
+  if (chars.length !== 2) return DIVIDER_CHAR
 
-  return char
+  if (chars[1].codePointAt(0)! < 32) return DIVIDER_CHAR
+
+  return chars[1]
 }
 
 /**
