@@ -5,6 +5,10 @@
  * drawn on a character grid, and authors align columns with spaces. So this
  * renders as a terminal that happens to be inside a browser, not as a web page
  * - anything else breaks other people's pages.
+ *
+ * Deliberately dark in both themes rather than following the reader's. Every
+ * other NomadNet client renders light-on-dark, page authors pick their colours
+ * against that, and a light ground makes their choices illegible.
  */
 
 import { escapeHtml } from '../../../html'
@@ -22,32 +26,42 @@ const CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src nomadnet:"
  * mesh request, and any other origin is blocked by the policy above.
  */
 const STYLES = `
-  :root { color-scheme: light dark; --ground: #fbfbfa; --ink: #1a1a19; --rule: #c9c9c4; --dead: #8a8a85; }
-  @media (prefers-color-scheme: dark) {
-    :root { --ground: #16161a; --ink: #e6e6e3; --rule: #3a3a40; --dead: #77777f; }
+  :root {
+    color-scheme: dark;
+    --ground: #101014;
+    --ink: #d6d6d0;
+    --rule: #4b4b54;
+    --dead: #6f6f79;
   }
   body {
     margin: 0;
-    padding: 1.5rem 2ch 3rem;
+    padding: 1rem 2ch 2rem;
     background: var(--ground);
     color: var(--ink);
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 14px;
-    line-height: 1.45;
+    /* Exactly one row per line, so box-drawing characters meet the ones above
+       and below them. Anything more and a page's art comes apart. */
+    line-height: 1;
     max-width: 100ch;
   }
-  h1, h2, h3 { font-size: 1em; font-weight: bold; margin: 1.2em 0 0.4em; }
-  h1 { font-size: 1.3em; }
-  h2 { font-size: 1.15em; }
-  p { margin: 0 0 0.15em; white-space: pre-wrap; overflow-wrap: anywhere; }
-  pre { margin: 0.6em 0; white-space: pre; overflow-x: auto; }
+  /* Every block is one row of the same size. Headings are bold, not bigger:
+     in a terminal they occupy the same cell as everything else, and growing
+     them here would push the rest of the page off the grid. */
+  h1, h2, h3, p, pre { font-size: 1em; margin: 0; }
+  h1, h2, h3 { font-weight: bold; }
+  p { white-space: pre-wrap; }
+  pre { white-space: pre; overflow-x: auto; }
   section { border-left: 1px solid var(--rule); }
-  hr { border: 0; border-top: 1px solid var(--rule); margin: 0.8em 0; }
   .divider { overflow: hidden; white-space: nowrap; color: var(--rule); }
   a { color: inherit; text-underline-offset: 2px; }
   .dead-link { color: var(--dead); text-decoration: line-through; cursor: not-allowed; }
-  input { font: inherit; color: inherit; background: transparent;
-          border: 1px solid var(--rule); padding: 0 0.5ch; }
+  /* No border or padding: either would make the field taller than its row */
+  input {
+    font: inherit; line-height: inherit; color: inherit;
+    background: transparent; border: 0; padding: 0;
+    text-decoration: underline; text-decoration-color: var(--rule);
+  }
 `
 
 /** Wrap a rendered fragment in a document, titled from the page's first heading. */

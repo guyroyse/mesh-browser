@@ -16,6 +16,10 @@ import type { Align, Block, Run, Style } from './parse'
 /** Matches the indent NomadNet gives each section level. */
 const SECTION_INDENT_CH = 2
 
+/* Comfortably past the widest page anyone draws; the row is clipped to the
+   viewport, so over-filling costs nothing and under-filling shows a short rule */
+const DIVIDER_WIDTH = 400
+
 export interface RenderContext {
   /** The node the page came from; relative link targets resolve against it. */
   destHashHex: string
@@ -57,8 +61,9 @@ export function renderBlocks(blocks: Block[], context: RenderContext): string {
       case 'heading': {
         setDepth(block.depth)
 
-        /* NomadNet's own themes style three levels; deeper sections still
-           indent, but stop growing the heading */
+        /* h1-h3 for structure only - the stylesheet renders all three at the
+           body size, since a terminal heading occupies the same cell as any
+           other row. Deeper sections keep indenting. */
         const level = Math.min(Math.max(block.depth, 1), 3)
 
         html.push(
@@ -148,13 +153,12 @@ function alignAttr(align: Align): string {
 }
 
 /**
- * A divider fills the line.
+ * A divider fills the line with its glyph, repeated and clipped.
  *
- * The default rule is an <hr>; a custom glyph is repeated and clipped, which
- * is the closest a proportional-free layout gets to what a terminal does.
+ * Deliberately not an <hr>: a divider occupies a whole row in a terminal, and
+ * a 1px rule would sit a fraction of a row tall and shift everything below it
+ * off the character grid the page was drawn on.
  */
 function dividerHtml(char: string): string {
-  if (char === '─') return '<hr>'
-
-  return `<div class="divider" aria-hidden="true">${escapeHtml(char.repeat(200))}</div>`
+  return `<div class="divider" aria-hidden="true">${escapeHtml(char.repeat(DIVIDER_WIDTH))}</div>`
 }
