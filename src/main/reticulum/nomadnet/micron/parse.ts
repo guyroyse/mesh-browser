@@ -172,11 +172,17 @@ function parseLine(line: string, state: State): Block | null {
   return { kind: 'paragraph', depth: state.depth, align: state.align, background: state.bg, runs }
 }
 
-/** `-` alone is the default rule; `-x` repeats x. Control characters are junk. */
+/**
+ * `-x` repeats x; anything else, `-` alone included, uses the default glyph.
+ *
+ * The two-character test is exact: a longer line beginning with a dash is not
+ * a three-glyph divider, it is a default one.
+ */
 function dividerChar(line: string): string {
-  const char = line.slice(1, 2)
+  if ([...line].length !== 2) return DIVIDER_CHAR
 
-  if (!char) return DIVIDER_CHAR
+  const char = [...line][1]
+
   if (char.codePointAt(0)! < 32) return DIVIDER_CHAR
 
   return char
@@ -221,14 +227,13 @@ function parseInline(line: string, state: State): Run[] {
     const tag = line[i + 1]
 
     /*
-     * A backtick at end of line closes whatever the line opened. Pages lean on
-     * this heavily - `Fccc+ `[Label`target]` sets a colour, draws a link and
-     * resets, all on one line - and emitting it as text put a stray backtick
-     * after every such link.
+     * A backtick at end of line opens a tag that never arrives, and is simply
+     * swallowed - state carries on to the next line untouched. Pages end link
+     * lines this way constantly, and emitting it as text put a stray backtick
+     * after every one of them.
      */
     if (tag === undefined) {
       flush()
-      resetAll(state)
       i++
       continue
     }
@@ -272,17 +277,12 @@ function parseInline(line: string, state: State): Run[] {
 
       case 'F':
       case 'B': {
-        const colour = readColour(line, i + 2)
-
-        if (!colour) {
-          /* Not a colour after all - emit the tag letter and move on */
-          text += tag
-          i += 2
-          break
-        }
+        const colour = readColour(line, i, tag)
 
         flush()
 
+        /* An unparseable colour clears rather than prints: the tag's operand
+           is consumed either way, so emitting it as text would leak markup */
         if (tag === 'F') state.fg = colour.value
         else state.bg = colour.value
 
@@ -357,21 +357,71 @@ function parseInline(line: string, state: State): Run[] {
 }
 
 /**
- * Read a three-digit colour.
+ * Read a colour operand, in each of the three spellings micron uses.
  *
- * Micron's documented colour form is three hex digits, one per channel, which
- * expand by doubling. Six-digit forms are deliberately not guessed at: the
- * grammar has no terminator, so treating `F000abc` as six digits would eat
- * three characters of a page's text whenever the text happened to be hex.
+ * `Fabc            three hex digits, one per channel
+ * `FTrrggbb        true colour, six hex digits behind a T
+ * `Fabc`Fdef       true colour split across a tag pair, interleaved
+ * `Fg50            greyscale, 0-99
+ *
+ * The operand is always consumed even when it does not parse, because the
+ * length is fixed by the spelling rather than by the content - printing the
+ * leftovers would leak markup into the page.
  */
-function readColour(line: string, start: number): { value: string; next: number } | null {
-  const digits = line.slice(start, start + 3)
+function readColour(line: string, backtick: number, tag: string): { value: string | null; next: number } {
+  /* `FTrrggbb */
+  if (line[backtick + 2] === 'T' && line.length >= backtick + 9) {
+    return { value: hexColour(line.slice(backtick + 3, backtick + 9)), next: backtick + 9 }
+  }
 
-  if (!/^[0-9a-fA-F]{3}$/.test(digits)) return null
+  /* `Fabc`Fdef - the two halves interleave rather than concatenate */
+  if (
+    line[backtick + 5] === '`' &&
+    line[backtick + 6] === tag &&
+    line.length >= backtick + 10
+  ) {
+    const value = hexColour(
+      line[backtick + 7] +
+        line[backtick + 2] +
+        line[backtick + 8] +
+        line[backtick + 3] +
+        line[backtick + 9] +
+        line[backtick + 4]
+    )
 
-  const [r, g, b] = digits.toLowerCase()
+    return { value, next: backtick + 10 }
+  }
 
-  return { value: `#${r}${r}${g}${g}${b}${b}`, next: start + 3 }
+  if (line.length >= backtick + 5) {
+    return { value: shortColour(line.slice(backtick + 2, backtick + 5)), next: backtick + 5 }
+  }
+
+  return { value: null, next: line.length }
+}
+
+/** Three characters: either one hex digit per channel, or `gNN` greyscale. */
+function shortColour(token: string): string | null {
+  if (/^[0-9a-fA-F]{3}$/.test(token)) {
+    const [r, g, b] = token.toLowerCase()
+
+    return `#${r}${r}${g}${g}${b}${b}`
+  }
+
+  if (token[0] === 'g') {
+    const level = Number.parseInt(token.slice(1), 10)
+    const value = Number.isNaN(level) ? 50 : level
+    const channel = Math.floor(value * 2.55)
+      .toString(16)
+      .padStart(2, '0')
+
+    return `#${channel}${channel}${channel}`
+  }
+
+  return null
+}
+
+function hexColour(token: string): string | null {
+  return /^[0-9a-fA-F]{6}$/.test(token) ? `#${token.toLowerCase()}` : null
 }
 
 function readDelimited(

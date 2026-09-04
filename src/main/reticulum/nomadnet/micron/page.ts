@@ -30,12 +30,16 @@ const STYLES = `
   :root {
     color-scheme: dark;
     --ground: #101014;
-    --ink: #d6d6d0;
+    --ink: #dddddd;
     --rule: #4b4b54;
     --dead: #6f6f79;
-    --head-1: #e8e8e2;
-    --head-2: #b8b8b2;
-    --head-3: #909089;
+    /* MeshChatX's dark-theme heading styles, exactly */
+    --head-1-bg: #bbbbbb;
+    --head-1-fg: #222222;
+    --head-2-bg: #999999;
+    --head-2-fg: #111111;
+    --head-3-bg: #777777;
+    --head-3-fg: #000000;
   }
   body {
     margin: 0;
@@ -53,13 +57,13 @@ const STYLES = `
      in a terminal they occupy the same cell as everything else, and growing
      them here would push the rest of the page off the grid. */
   h1, h2, h3, p, pre { font-size: 1em; margin: 0; }
-  /* A section heading is a bar of inverted text, dimming with depth, which is
-     what NomadNet's own theme draws and what page authors lay out against.
-     A page that sets its own colours overrides this from the run's own style. */
-  h1, h2, h3 { font-weight: bold; color: var(--ground); }
-  h1 { background: var(--head-1); }
-  h2 { background: var(--head-2); }
-  h3 { background: var(--head-3); }
+  /* A section heading is a bar of dark text on a light ground, dimming with
+     depth. Deliberately not bold - the weight comes from the bar, and other
+     clients render it this way. A page setting its own colours overrides this
+     from the run's own style. */
+  h1 { color: var(--head-1-fg); background: var(--head-1-bg); }
+  h2 { color: var(--head-2-fg); background: var(--head-2-bg); }
+  h3 { color: var(--head-3-fg); background: var(--head-3-bg); }
   p { white-space: pre-wrap; }
   pre { white-space: pre; overflow-x: auto; }
   /* Sections indent and nothing more - a rule down the margin is not something

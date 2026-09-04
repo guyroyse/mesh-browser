@@ -16,9 +16,9 @@ import type { Align, Block, Run, Style } from './parse'
 /** Matches the indent NomadNet gives each section level. */
 const SECTION_INDENT_CH = 2
 
-/* Comfortably past the widest page anyone draws; the row is clipped to the
-   viewport, so over-filling costs nothing and under-filling shows a short rule */
-const DIVIDER_WIDTH = 400
+/* The width other micron clients fill to; the row is clipped to the viewport,
+   so this only has to exceed the widest page anyone draws */
+const DIVIDER_WIDTH = 250
 
 export interface RenderContext {
   /** The node the page came from; relative link targets resolve against it. */
@@ -177,7 +177,10 @@ function styled(content: string, style: Style): string {
   const rules: string[] = []
 
   if (style.fg) rules.push(`color:${style.fg}`)
-  if (style.bg) rules.push(`background-color:${style.bg}`)
+
+  /* inline-block so the background covers the run's full line box rather than
+     just the glyph bounds - the same trick other micron clients use */
+  if (style.bg) rules.push(`background-color:${style.bg}`, 'display:inline-block')
   if (style.bold) rules.push('font-weight:bold')
   if (style.underline) rules.push('text-decoration:underline')
   if (style.italic) rules.push('font-style:italic')
