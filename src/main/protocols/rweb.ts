@@ -6,8 +6,7 @@
  * adding a file beside this one rather than editing three.
  */
 
-import dedent from 'dedent'
-
+import { errorResponse } from '../html'
 import type { RserverClient } from '../reticulum/rserver/client'
 import { parseRwebUrl } from '../reticulum/rserver/url'
 
@@ -45,52 +44,16 @@ export function createRwebHandler(client: RserverClient) {
        */
       return new Response(body, { status: statusCode, headers })
     } catch (error) {
-      return errorResponse(request.url, error as Error)
+      return failed(request.url, error as Error)
     }
   }
 }
 
-function errorResponse(url: string, error: Error): Response {
+function failed(url: string, error: Error): Response {
   console.error('rweb: request failed:', error)
 
-  return new Response(errorPage(url, error.message), {
-    status: 500,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' }
+  return errorResponse(url, error, {
+    what: 'RWeb content',
+    hint: 'Make sure the destination is reachable on the Reticulum network.'
   })
-}
-
-function errorPage(url: string, message: string): string {
-  return dedent`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Failed to Load</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; }
-          .error { background: #fff5f5; border: 1px solid #fc8181; border-radius: 4px; padding: 20px; }
-          h2 { color: #e53e3e; margin-top: 0; }
-          code { background: #f7fafc; padding: 2px 4px; border-radius: 2px; }
-        </style>
-      </head>
-      <body>
-        <div class="error">
-          <h2>Failed to load RWeb content</h2>
-          <p><strong>Error:</strong> ${escapeHtml(message)}</p>
-          <p><strong>URL:</strong> <code>${escapeHtml(url)}</code></p>
-          <p>Make sure the destination is reachable on the Reticulum network.</p>
-        </div>
-      </body>
-    </html>
-  `
-}
-
-function escapeHtml(text: string): string {
-  if (!text) return ''
-
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 }

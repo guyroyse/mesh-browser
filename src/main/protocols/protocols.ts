@@ -10,8 +10,10 @@
 import { protocol } from 'electron'
 
 import type { Startable, Stoppable } from '../lifecycle'
+import { NomadnetClient } from '../reticulum/nomadnet/client'
 import { RserverClient } from '../reticulum/rserver/client'
 import { ReticulumStack } from '../reticulum/stack'
+import { createNomadnetHandler, nomadnetScheme } from './nomadnet'
 import { createRwebHandler, rwebScheme } from './rweb'
 
 /*
@@ -20,17 +22,23 @@ import { createRwebHandler, rwebScheme } from './rweb'
  */
 const stack = new ReticulumStack()
 const rserverClient = new RserverClient(stack)
+const nomadnetClient = new NomadnetClient(stack)
 
 /** Declare schemes to Chromium. Must run *before* app-ready. */
 export function registerProtocolSchemes(): void {
-  protocol.registerSchemesAsPrivileged([rwebScheme])
+  protocol.registerSchemesAsPrivileged([rwebScheme, nomadnetScheme])
 }
 
 /** Attach handlers and bring clients up. Must run *after* app-ready. */
 export function setupProtocols(): void {
   protocol.handle(rwebScheme.scheme, createRwebHandler(rserverClient))
+  protocol.handle(nomadnetScheme.scheme, createNomadnetHandler(nomadnetClient))
 
+  /* Both clients share one stack, so the second warm-up is a no-op rather than
+     a second connection - it is here so that adding a protocol stays a
+     symmetrical two lines */
   warmUp('rserver', rserverClient)
+  warmUp('NomadNet', nomadnetClient)
 }
 
 /**
@@ -43,7 +51,10 @@ export function setupProtocols(): void {
  * loudly.
  */
 export async function teardownProtocols(): Promise<void> {
-  await shutDown('rserver', rserverClient)
+  await Promise.all([
+    shutDown('rserver', rserverClient),
+    shutDown('NomadNet', nomadnetClient)
+  ])
 
   await shutDown('Reticulum stack', stack)
 }

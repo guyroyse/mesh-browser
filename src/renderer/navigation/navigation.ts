@@ -48,6 +48,12 @@ class NavigationController {
   }
 
   async navigate(url: string) {
+    /*
+     * A bare destination hash is genuinely ambiguous - rweb and nomadnet name
+     * endpoints with identically shaped 32-hex hashes, and nothing in the
+     * input says which. rweb stays the default; anything else needs its
+     * scheme typed. Resolving it from announces is future work.
+     */
     if (!url.includes('://')) {
       if (!url.startsWith('about:')) {
         url = `rweb://${url}`
