@@ -43,8 +43,8 @@ export type Run =
   | { kind: 'anchor'; name: string }
 
 export type Block =
-  | { kind: 'paragraph'; depth: number; align: Align; runs: Run[] }
-  | { kind: 'heading'; depth: number; align: Align; runs: Run[] }
+  | { kind: 'paragraph'; depth: number; align: Align; background: string | null; runs: Run[] }
+  | { kind: 'heading'; depth: number; align: Align; background: string | null; runs: Run[] }
   | { kind: 'divider'; depth: number; char: string; style: Style }
   | { kind: 'literal'; lines: string[] }
 
@@ -149,7 +149,7 @@ function parseLine(line: string, state: State): Block | null {
 
     const runs = parseInline(line.slice(depth), state)
 
-    return { kind: 'heading', depth, align: state.align, runs }
+    return { kind: 'heading', depth, align: state.align, background: state.bg, runs }
   }
 
   if (line.startsWith('<')) {
@@ -158,12 +158,18 @@ function parseLine(line: string, state: State): Block | null {
 
     const runs = parseInline(line.slice(1), state)
 
-    return { kind: 'paragraph', depth: 0, align: state.align, runs }
+    return { kind: 'paragraph', depth: 0, align: state.align, background: state.bg, runs }
   }
 
   const runs = parseInline(line, state)
 
-  return { kind: 'paragraph', depth: state.depth, align: state.align, runs }
+  /*
+   * The background in effect belongs to the whole row, not just the text on
+   * it: micron pages paint a block by setting a background, leaving blank
+   * lines inside it, and clearing it afterwards. Carried on the block so an
+   * empty line still paints.
+   */
+  return { kind: 'paragraph', depth: state.depth, align: state.align, background: state.bg, runs }
 }
 
 /** `-` alone is the default rule; `-x` repeats x. Control characters are junk. */

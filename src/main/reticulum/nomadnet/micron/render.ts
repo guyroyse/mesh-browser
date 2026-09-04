@@ -73,7 +73,7 @@ export function renderBlocks(blocks: Block[], context: RenderContext): string {
         const idAttr = id ? ` id="${escapeHtml(id)}"` : ''
 
         html.push(
-          `<h${level}${idAttr}${alignAttr(block.align)}>` +
+          `<h${level}${idAttr}${blockAttr(block.align, block.background)}>` +
             `${renderRuns(block.runs, context)}</h${level}>`
         )
         break
@@ -86,7 +86,7 @@ export function renderBlocks(blocks: Block[], context: RenderContext): string {
            authors space pages with them */
         const content = renderRuns(block.runs, context)
 
-        html.push(`<p${alignAttr(block.align)}>${content || '<br>'}</p>`)
+        html.push(`<p${blockAttr(block.align, block.background)}>${content || '<br>'}</p>`)
         break
       }
     }
@@ -187,8 +187,23 @@ function styled(content: string, style: Style): string {
   return `<span style="${rules.join(';')}">${content}</span>`
 }
 
-function alignAttr(align: Align): string {
-  return align === 'left' ? '' : ` style="text-align:${align}"`
+/**
+ * The style a whole row carries: its alignment, and any background in effect.
+ *
+ * The background belongs here rather than on the runs so that it fills the
+ * line - a page paints a block by setting a background, leaving blank lines
+ * inside it and clearing it after, and painting only behind the glyphs would
+ * leave that block in ribbons.
+ */
+function blockAttr(align: Align, background: string | null): string {
+  const rules: string[] = []
+
+  if (align !== 'left') rules.push(`text-align:${align}`)
+  if (background) rules.push(`background-color:${background}`)
+
+  if (rules.length === 0) return ''
+
+  return ` style="${rules.join(';')}"`
 }
 
 /**
